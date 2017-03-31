@@ -1,5 +1,8 @@
 # Logs
 log/
+.gitignore
+test.js
+testObj.js
 output/
 .env
 *.log

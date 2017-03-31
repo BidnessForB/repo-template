@@ -5,25 +5,19 @@
 ,"config":
 {
   "GitHubPAT":"<your properly scoped PAT>"
-,"targetRepo":"demo_decks"
-,"targetBranch":"master"
-,"targetHost":"github.com"
-,"owner":"bryancross"
-,"user":"bryancross"
 ,"authType":"oauth"
-,"cloudConvertAPIToken":"<your cloudconvert API token>"
-,"commitMsg":"Auto committed by key2pdf"
+,"user":"<some username matching the PAT"
+,"TemplateSourceRepo":"<org/user>/<repository>"
+,"TemplateSourcePath":"<path/to/templates>"
+,"commitMsg":"Auto committed by repo-template"
 ,"deleteTempDir":true
-,"userAgent":"key2pdf"
+,"userAgent":"repo-template"
 ,"listenOnPort":3000
 ,"callback": ""
 ,"debug":false
 ,"jobsLimit":1000
-,"maxConvertRetries":3
+,"debug":false
 }
-,"convertRetries":[]
-,"files":[]
-,"PDFs":[]
 ,"errors":[]
 ,"status":""
 ,"tempDir":""
