@@ -5,7 +5,7 @@ mkdir -p log
 echo "Creating jobs directory"
 mkdir -p jobs
 cp config/job-template-example.json config/job-template.json
-cp config/config-example.json config.json
+cp config/config-example.json config/config.json
 clear
 echo "****************************************************************"
 echo
