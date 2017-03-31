@@ -26,7 +26,6 @@ var parse = require('date-fns/parse');  //https://github.com/date-fns/date-fns
 var format = require('date-fns/format');  //https://github.com/date-fns/date-fns
 var differenceInMilliseconds = require('date-fns/difference_in_milliseconds'); //https://github.com/date-fns/date-fns
 var jobs = [];
-var gDriveUpload = require('./gdrive');
 
 logger.syslog("Server startup","Starting");
 //GitHub Enterprise uses /api/v3 as a prefix to REST calls, while GitHub.com does not.
@@ -44,7 +43,7 @@ function dispatchRequest(request, response)
 
     }
     catch (e) {
-        logger.log(e)
+        logger.syslog(e)
     }
 }
 
@@ -65,6 +64,8 @@ server.listen(globalJobTemplate.listenOnPort == null ? PORT : globalJobTemplate.
 dispatcher.onPost('/createRepo', function (req, res)
 {
 
-    logger.log("It's Magic!");
+    logger.syslog("It's Magic!", "Not doing a damned thing");
+    res.writeHead(200, {'Content-Type': 'text/plain'});
+    res.end("hahaha.  I don't actually do anything lolz :)");
 
 });
