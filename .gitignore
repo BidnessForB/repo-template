@@ -12,6 +12,7 @@ pids
 lib-cov
 config/config.json
 config/repos/*
+config/job-template.json
 # Coverage directory used by tools like istanbul
 coverage
 

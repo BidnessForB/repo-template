@@ -1,0 +1,24 @@
+{
+   "jobID":""
+  ,"startTime":""
+  ,"msgs":[]
+  ,"config":
+  {
+    "GitHubPAT":"<your properly scoped GitHub PAT>"
+    ,"owner":"bryancross"
+    ,"user":"bryancross"
+    ,"authType":"oauth"
+    ,"commitMsg":"Auto committed by repo-template"
+    ,"deleteTempDir":true
+    ,"userAgent":"repo-template"
+    ,"listenOnPort":3000
+    ,"callback":"http://localhost:3001/status"
+    ,"debug":false
+    ,"jobsLimit":1000
+  }
+  ,"errors":[]
+  ,"status":""
+  ,"tempDir":""
+  ,"endTime":""
+  ,"duration":""
+}
