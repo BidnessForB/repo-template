@@ -2,7 +2,7 @@
   "name": "repo-template",
   "version": "1.0.0",
   "description": "Create new GitHub repositories based on templates",
-  "main": "server.js",
+  "main": "repo-template.js",
   "scripts": {
     "test": "server.js"
   },

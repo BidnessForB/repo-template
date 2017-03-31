@@ -1,0 +1,92 @@
+{
+   "config-name":"default"
+  ,"config-type":"repository"
+  ,"owning-organization":"bryancross"
+  ,"repository-attributes":
+  {
+     "name":"default"
+    ,"description":"Default description"
+    ,"homepage":"https://github.com"
+    ,"private":false
+    ,"has_issues":true
+    ,"has_projects":true
+    ,"has_wiki":true
+    ,"team_id":-1
+    ,"auto_init":true
+    ,"gitignore_template":""
+    ,"license_template":"mit"
+  }
+  ,"branches":
+        [
+          {
+            "name":"master"
+            ,"protection":
+            {
+              "required_status_checks": {
+                "include_admins": true,
+                "strict": true,
+                "contexts": [
+                  "continuous-integration/travis-ci"
+                ]
+              },
+              "required_pull_request_reviews": {
+                "include_admins": false
+              },
+              "enforce_admins": true,
+              "restrictions": {
+                "users": [
+                  "octocat"
+                ],
+                "teams": [
+                  "justice-league"
+                ]
+              }
+            }
+          }
+          ,
+          {
+            "name":"develop"
+          ,"protection":
+          {
+            "required_status_checks": {
+              "include_admins": true,
+              "strict": true,
+              "contexts": [
+                "continuous-integration/travis-ci"
+              ]
+            },
+            "required_pull_request_reviews": {
+              "include_admins": false
+            },
+            "enforce_admins": true,
+            "restrictions": {
+              "users": [
+                "octocat"
+              ],
+              "teams": [
+                "justice-league"
+              ]
+            }
+          }
+          }
+        ]
+  ,"directories":
+        [
+           "lib"
+          ,"config"
+          ,"test"
+          ,"script"
+        ]
+  ,"files":
+        [
+          {
+             "file": "./repo_files/CONTRIBUTING.md"
+            ,"location": "/"
+          }
+          ,
+          {
+             "file":"./repo_files/CHANGELOG.md"
+            ,"location":"/"
+          }
+        ]
+}
