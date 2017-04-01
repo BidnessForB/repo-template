@@ -1,8 +1,8 @@
 {
-   "config-name":"simple"
-  ,"config-type":"repository"
-  ,"owning-organization":"bryancross"
-  ,"repository-attributes":
+   "configName":"simple"
+  ,"configType":"repository"
+  ,"owningOrganization":"bryancross"
+  ,"repositoryAttributes":
   {
      "name":"simple"
     ,"description":"Default description"
@@ -11,9 +11,13 @@
     ,"has_issues":true
     ,"has_projects":true
     ,"has_wiki":true
-    ,"team_id":-1
     ,"auto_init":true
     ,"gitignore_template":""
     ,"license_template":"mit"
+    ,"allow_rebase_merge":true
+    ,"has_downloads":true
+    ,"allow_squash_merge":true
+    ,"allow_merge_commit":true
+    ,"team_id":-1
   }
 }

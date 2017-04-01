@@ -202,7 +202,7 @@ dispatcher.onPost('/createRepo', function (req, res)
         return;
     }
 
-    if(arrayUtil.findValueInArray(globalConfig.repoConfigs,job.config.params.configName,"config-name") === null)
+    if(arrayUtil.findValueInArray(globalConfig.repoConfigs,job.config.params.configName,"configName") === null)
     {
         logger.syslog("Requested configuration not found: " + job.config.params.configName, "Error");
         res.writeHead(400, {'Content-Type': 'text/plain'});
@@ -210,17 +210,76 @@ dispatcher.onPost('/createRepo', function (req, res)
         return;
     }
 
+    jobs.push(job);
     logger.syslog("Processing request: " + job.config.params.configName + " jobID: " + job.jobID,"Processing");
     res.writeHead(200, {'Content-Type': 'text/plain'});
     res.end(JSON.stringify("Processing request.  JobID: " + job.jobID));
-    jobs.push(job);
+
     createRepo(job);
 
 });
 
 function createRepo(job)
 {
-    console.log("Yup");
+    var repoConfig = job.config.repoConfigs[arrayUtil.findValueInArray(job.config.repoConfigs, job.config.params.configName, "configName")];
+    logger.log("Found config: " + repoConfig.configName,job, "Creating repo");
+    var options =
+                {
+                    name: job.config.params.newRepoName
+                    ,
+                    description: repoConfig.repositoryAttributes.description
+                    ,
+                    homepage: repoConfig.repositoryAttributes.homepage
+                    ,
+                    private: repoConfig.repositoryAttributes.private
+                    ,
+                    has_issues: repoConfig.repositoryAttributes.has_issues
+                    ,
+                    has_projects: repoConfig.repositoryAttributes.has_projects
+                    ,
+                    has_wiki: repoConfig.repositoryAttributes.has_wiki
+                    ,
+                    auto_init: repoConfig.repositoryAttributes.auto_init
+                    ,
+                    gitignore_template: repoConfig.repositoryAttributes.gitignore_template
+                    ,
+                    license_template: repoConfig.repositoryAttributes.license_template
+                    ,
+                    allow_rebase_merge: repoConfig.repositoryAttributes.allow_rebase_merge
+                    ,
+                    has_downloads: repoConfig.repositoryAttributes.has_downloads
+                    ,
+                    allow_squash_merge: repoConfig.repositoryAttributes.allow_squash_merge
+                    ,
+                    allow_merge_commit: repoConfig.repositoryAttributes.allow_merge_commit
+
+                }
+    if(!job.config.params.orgName) {
+        job.github.repos.create(options)
+            .then(function (err, res) {
+                console.log(JSON.stringify(err));
+            }).catch(function (err) {
+            logger.log("Error creating repository: " + err.message, job, "Failed", err);
+            return;
+        });
+    }
+    else
+    {
+        options.org = job.config.params.orgName;
+        job.github.repos.createForOrg(options)
+            .then(function (err, res) {
+                logger.log("Repository created. ID: " + err.id);
+                job.repository = JSON.parse(JSON.stringify(err));
+                //add teams
+                //add branches
+                //add branch protection
+
+            }).catch(function (err) {
+            logger.log("Error creating repository: " + err.message, job, "Failed", err);
+            return;
+        });
+    }
+
 }
 
 //From filesystem for now, ultimately from configured repository
