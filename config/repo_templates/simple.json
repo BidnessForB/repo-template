@@ -1,0 +1,19 @@
+{
+   "config-name":"simple"
+  ,"config-type":"repository"
+  ,"owning-organization":"bryancross"
+  ,"repository-attributes":
+  {
+     "name":"simple"
+    ,"description":"Default description"
+    ,"homepage":"https://github.com"
+    ,"private":false
+    ,"has_issues":true
+    ,"has_projects":true
+    ,"has_wiki":true
+    ,"team_id":-1
+    ,"auto_init":true
+    ,"gitignore_template":""
+    ,"license_template":"mit"
+  }
+}

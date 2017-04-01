@@ -1,6 +1,7 @@
 # Logs
 log/
 .gitignore
+config/repo_templates/*foo*
 test.js
 testObj.js
 output/
