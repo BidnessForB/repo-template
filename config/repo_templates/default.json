@@ -22,8 +22,15 @@
   }
   ,"teams":
     [
-     "Developers"
-    ,"DevLeads"
+      {
+         "team":"Developers"
+        ,"permission":"push"
+      }
+      ,
+      {
+         "team":"DevLeads"
+        ,"permission":"admin"
+      }
     ]
   ,"branches":
         [

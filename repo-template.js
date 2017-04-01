@@ -257,7 +257,8 @@ function createRepo(job)
     if(!job.config.params.orgName) {
         job.github.repos.create(options)
             .then(function (err, res) {
-                console.log(JSON.stringify(err));
+                logger.log("Repository created. ID: " + err.id);
+                job.repository = JSON.parse(JSON.stringify(err));
             }).catch(function (err) {
             logger.log("Error creating repository: " + err.message, job, "Failed", err);
             return;
@@ -270,16 +271,38 @@ function createRepo(job)
             .then(function (err, res) {
                 logger.log("Repository created. ID: " + err.id);
                 job.repository = JSON.parse(JSON.stringify(err));
-                //add teams
-                //add branches
-                //add branch protection
+            }).then(function (err,res)
+        {
+            if(job.config.params.orgName && repoConfig.teams)
+            {
+                //Get teams
+                //Add specified teams
+                var team;
+                job.github.orgs.getTeams({org: job.config.params.orgName})
+                    .then(function (err,res)
+                    {
+                        for(var i = 0;i < repoConfig.teams.length;i++)
+                        {
+                            //Make sure
+                            team = arrayUtil.getArrayElementByKey(err,repoConfig.teams[i].team,"name");
+                            if(team != null)
+                            {
+                                job.github.orgs.addTeamRepo({
+                                    id: team.id
+                                    ,org: job.config.params.orgName
+                                    ,repo: job.repository.name
+                                    ,permission: team.permission
+                                })
+                            }
 
-            }).catch(function (err) {
+                        };
+                    });
+            }
+        }).catch(function (err) {
             logger.log("Error creating repository: " + err.message, job, "Failed", err);
             return;
         });
     }
-
 }
 
 //From filesystem for now, ultimately from configured repository
