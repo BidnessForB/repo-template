@@ -259,6 +259,7 @@ function createRepo(job)
             .then(function (err, res) {
                 logger.log("Repository created. ID: " + err.id);
                 job.repository = JSON.parse(JSON.stringify(err));
+                configureTeams(job,repoConfig);
             }).catch(function (err) {
             logger.log("Error creating repository: " + err.message, job, "Failed", err);
             return;
@@ -272,37 +273,85 @@ function createRepo(job)
                 logger.log("Repository created. ID: " + err.id);
                 job.repository = JSON.parse(JSON.stringify(err));
             }).then(function (err,res)
-        {
-            if(job.config.params.orgName && repoConfig.teams)
             {
-                //Get teams
-                //Add specified teams
-                var team;
-                job.github.orgs.getTeams({org: job.config.params.orgName})
-                    .then(function (err,res)
-                    {
-                        for(var i = 0;i < repoConfig.teams.length;i++)
-                        {
-                            //Make sure
-                            team = arrayUtil.getArrayElementByKey(err,repoConfig.teams[i].team,"name");
-                            if(team != null)
-                            {
-                                job.github.orgs.addTeamRepo({
-                                    id: team.id
-                                    ,org: job.config.params.orgName
-                                    ,repo: job.repository.name
-                                    ,permission: team.permission
-                                })
-                            }
+                configureTeams(job, repoConfig);
+            }).catch(function (err) {
+                logger.log("Error creating repository: " + err.message, job, "Failed", err);
+                return;
+            });
+    }
+}
 
-                        };
-                    });
+function configureTeams(job, repoConfig) {
+    if (job.config.params.orgName && repoConfig.teams) {
+        //Get teams
+        //Add specified teams
+        var team;
+        job.github.orgs.getTeams({org: job.config.params.orgName})
+            .then(function (err, res) {
+                for (var i = 0; i < repoConfig.teams.length; i++) {
+                    //Make sure
+                    team = arrayUtil.getArrayElementByKey(err, repoConfig.teams[i].team, "name");
+                    if (team != null) {
+                        job.github.orgs.addTeamRepo({
+                            id: team.id
+                            , org: job.config.params.orgName
+                            , repo: job.repository.name
+                            , permission: team.permission
+                        })
+                    }
+
+                }
+            }).then(function (err, res) {
+            //Configure branches
+
+            if (repoConfig.branches) {
+               configBranches(job, repoConfig);
             }
-        }).catch(function (err) {
-            logger.log("Error creating repository: " + err.message, job, "Failed", err);
-            return;
         });
     }
+}
+
+function configBranches(job, repoConfig)
+{
+    //Create a ref with the SHA of the HEAD commit to branch from
+    //So first, get the ref
+
+    var commit;
+
+    job.github.repos.getBranch({
+        owner: job.repository.owner.login,
+        repo: job.repository.name,
+        branch: 'master'
+    }).then(function (err, res)
+        {
+            /*job.github.gitdata.getTree(
+                {owner: job.repository.owner.login
+                 ,repo: job.repository.name
+                 ,sha: err.commit.commit.tree.sha
+                 ,recursive: true}
+            )}).then(function(err, res)
+            */
+            job.commitSHA = err.commit.sha;
+                for(var i = 0; i < repoConfig.branches.length; i++)
+                {
+                    //skip master.  Later find out what the default branch is and skip it
+                    if(repoConfig.branches[i].name != 'master') {
+                        job.github.gitdata.createReference(
+                            {
+                                owner: job.repository.owner.login
+                                ,
+                                repo: job.repository.name
+                                ,
+                                ref: 'refs/heads/' + repoConfig.branches[i].name
+                                ,
+                                sha: job.commitSHA
+                            }
+                        )
+                    }
+                }
+            });
+
 }
 
 //From filesystem for now, ultimately from configured repository
