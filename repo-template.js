@@ -347,12 +347,32 @@ function configBranches(job, repoConfig)
                                 ,
                                 sha: job.commitSHA
                             }
-                        )
+                        ).then(function(err,res) {
+
+                            var index = arrayUtil.findValueInArray(repoConfig.branches,err.ref.split('/').pop(),"name");
+                            var branch = repoConfig.branches[index];
+
+                            if (branch.protection) {
+                                var params = {
+                                    "owner": job.repository.owner.login
+                                    , "repo": job.repository.name
+                                    , "branch": branch.name
+                                }
+                                if (branch.protection.required_status_checks) {
+                                    params.required_status_checks = JSON.parse(JSON.stringify(branch.protection.required_status_checks));
+                                }
+                                if (branch.protection.required_pull_request_reviews) {
+                                    params.required_pull_request_reviews = JSON.parse(JSON.stringify(branch.protection.required_pull_request_reviews));
+                                }
+                                if (branch.protection.restrictions) {
+                                    params.restrictions = JSON.parse(JSON.stringify(branch.protection.restrictions));
+                                }
+                                job.github.repos.updateBranchProtection(params)
+                            }})
                     }
                 }
             });
-
-}
+};
 
 //From filesystem for now, ultimately from configured repository
 function loadRepoConfigs()

@@ -51,10 +51,10 @@
               "enforce_admins": true,
               "restrictions": {
                 "users": [
-                  "octocat"
+                  "Mario"
                 ],
                 "teams": [
-                  "justice-league"
+                  "DevLeads"
                 ]
               }
             }
@@ -77,10 +77,11 @@
             "enforce_admins": true,
             "restrictions": {
               "users": [
-                "octocat"
+                "Mario"
               ],
               "teams": [
-                "justice-league"
+                "Developers"
+                ,"DevLeads"
               ]
             }
           }
