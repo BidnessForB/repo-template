@@ -2,9 +2,13 @@
 
 #/Usage:  repo-template.sh cmd
 #/
-#/  Convert a single keynote file to PDF, or all keynote files in a repository
-#/  to PDF.  Optionally commit the converted PDFs back to GitHub and/or copy
-#/  them to a configured location in Google Drive
+#/  Create a copy of a repository from a configuration file.  You can configure
+#/  repo-template to:
+#/
+#/        - Create a repository
+#/        - Add teams and individuals as collaborators
+#/        - Create branches
+#/        - Configure branch protection
 #/
 #/ COMMANDS:
 #/
