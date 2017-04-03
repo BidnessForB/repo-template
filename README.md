@@ -14,6 +14,12 @@ configuration files.
    repository  
     `./script/repo_template.sh create-repo targetHost newRepoName repoConfigName <ownerName | orgName>`
     
+#### Postman REST API call configurations
+If you use [postman](https://www.getpostman.com/docs/) (which is _awesome_), you can import and use
+the postman collection stored in `./test/repo-template-postman_collection.json`.  Just be sure to 
+replace the place-holders with a properly scoped GitHub PAT.
+    
+    
 #### Future work
   Some ideas which seem useful include:
   - [ ] Specify an existing repository as a template
