@@ -1,0 +1,275 @@
+{
+	"variables": [],
+	"info": {
+		"name": "repo-template",
+		"_postman_id": "80769c70-619f-a033-3ad5-4e0f14a05c12",
+		"description": "",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "create repo",
+			"request": {
+				"url": "http://localhost:3000/createRepo",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"targetHost\":\"octodemo.com\"\n ,\"newRepoName\":\"AutoRepo\"\n ,\"configName\":\"default\"\n ,\"ownerName\":\"admackbar\"\n ,\"orgName\":\"rebelware\"\n}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "load repo configs",
+			"request": {
+				"url": "http://localhost:3000/loadRepoConfigs",
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "stop server",
+			"request": {
+				"url": "http://localhost:3000/stop",
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "suspend",
+			"request": {
+				"url": "http://localhost:3000/suspend",
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "resume",
+			"request": {
+				"url": "http://localhost:3000/resume",
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Status",
+			"request": {
+				"url": "http://localhost:3000/status",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"foo\":\"0000\"}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Ping API",
+			"request": {
+				"url": "https://octodemo.com/api/v3/user/repos",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "token <Your Properly scoped GitHub PAT>",
+						"description": ""
+					},
+					{
+						"key": "Accept",
+						"value": "application/vnd.github.v3+json",
+						"description": ""
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": " {\"name\":\"simple\"\n    ,\"description\":\"Default description\"\n    ,\"homepage\":\"https://github.com\"\n    ,\"private\":false\n    ,\"has_issues\":true\n    ,\"has_projects\":true\n    ,\"has_wiki\":true\n    ,\"auto_init\":true\n    ,\"gitignore_template\":\"\"\n    ,\"license_template\":\"mit\"\n    ,\"allow_rebase_merge\":true\n    ,\"has_downloads\":true\n    ,\"allow_squash_merge\":true\n    ,\"allow_merge_commit\":true\n    }"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Get teams",
+			"request": {
+				"url": "https://octodemo.com/api/v3/orgs/rebelware/teams",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "token <Your Properly scoped GitHub PAT>",
+						"description": ""
+					},
+					{
+						"key": "Accept",
+						"value": "application/vnd.github.v3+json",
+						"description": ""
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Get team",
+			"request": {
+				"url": "https://octodemo.com/api/v3/teams/Developers",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "token <Your Properly scoped GitHub PAT>",
+						"description": ""
+					},
+					{
+						"key": "Accept",
+						"value": "application/vnd.github.v3+json",
+						"description": ""
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Create Branch Ref",
+			"request": {
+				"url": "https://octodemo.com/api/v3/teams/298",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "token <Your Properly scoped GitHub PAT>",
+						"description": ""
+					},
+					{
+						"key": "Accept",
+						"value": "application/vnd.github.v3+json",
+						"description": ""
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"ref\": \"refs/heads/featureA\",\n  \"sha\": \"ad527d3eb22260f7d4b6e4afa715ab4b68b6c4ec\"\n}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Get Branch",
+			"request": {
+				"url": "https://octodemo.com/api/v3/repos/rebelware/meeting-time/git/refs",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "token <Your Properly scoped GitHub PAT>",
+						"description": ""
+					},
+					{
+						"key": "Accept",
+						"value": "application/vnd.github.v3+json",
+						"description": ""
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"ref\": \"refs/heads/featureA\",\n  \"sha\": \"ad527d3eb22260f7d4b6e4afa715ab4b68b6c4ec\"\n}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "delete repo",
+			"request": {
+				"url": "http://octodemo.com/repos/rebelware/AutoRepo",
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					},
+					{
+						"key": "Authorization",
+						"value": "token <Your Properly scoped GitHub PAT>",
+						"description": ""
+					},
+					{
+						"key": "//Content-Type",
+						"value": "application/json",
+						"description": "",
+						"disabled": true
+					},
+					{
+						"key": "Accept",
+						"value": "application/vnd.github.v3+json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"owner\":\"rebelware\"\n\t,\"repo\":\"AutoRepo\"\n\t\n}"
+				},
+				"description": ""
+			},
+			"response": []
+		}
+	]
+}

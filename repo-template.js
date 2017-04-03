@@ -185,7 +185,7 @@ dispatcher.onPost('/createRepo', function (req, res)
 
     try
     {
-        if (!params.targetHost || !params.newRepoName || !params.configName || !params.ownerName)
+        if (!params.targetHost || !params.newRepoName || !params.configName || (!params.ownerName && !params.orgName))
         {
             logger.syslog("Invalid request", "Error");
             res.writeHead(400, {'Content-Type': 'text/plain'});
