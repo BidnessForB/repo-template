@@ -9,7 +9,7 @@ cp config/config-example.json config/config.json
 clear
 echo "****************************************************************"
 echo
-echo "Remember to edit config/job-template.json and config/config.json"
+echo "Remember to edit config/config.json and ./script/.env"
 echo "Add your PATs and ensure the values make sense for your environment"
 echo
 echo "****************************************************************"

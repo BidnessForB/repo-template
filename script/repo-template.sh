@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#/Usage:  repo-template.sh cmd
+#/Usage:  repo-template.sh cmd <options>
 #/
 #/  Create a copy of a repository from a configuration file.  You can configure
 #/  repo-template to:
@@ -15,6 +15,8 @@
 #/  start	Start the repo-template server
 #/
 #/  stop	Stop the repo-template server
+#/
+#/  tunnel  Start an Nginx proxy.
 #/
 #/  suspend	Stop the repo-template server from resopnding to requests
 #/
@@ -93,6 +95,10 @@ do
             CMD_JSON=$CMD_JSON"\"orgName\":\"${1}\""
             CMD_OPTION=1
             break
+            ;;
+        tunnel)
+            ./tunnel.sh
+            exit 0
             ;;
         start)
             echo "Starting repo-template server"
