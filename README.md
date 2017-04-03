@@ -26,6 +26,7 @@ replace the place-holders with a properly scoped GitHub PAT.
   - [ ] Specify a repository and create a configuration file describing it for future use
   - [ ] Parse Pull Requests on merge for specific text which would trigger a new repository build.  Parameters to be included in the body of the PR
   - [ ] Include webhooks in configuration of new repositories
+  - [ ] Manage configuration data in a repository rather than the filesystem.
   
 #### TODO
   - [ ] Add tests
@@ -48,12 +49,13 @@ Usage:  `repo-template.sh cmd <options>`
 
 |Command|Description|
 |--------|----------|
-|`start`|Start the repo-template server|
+|`start`|Start the repo-template server.  Returns JSON with the jobID|
 |`stop`|Stop the repo-template server|
 |`tunnel`|Start an nginix proxy.  Useful for testing webhooks|
 |`suspend`|Stop the repo-template server from resopnding to requests|
 |`resume`|Unsuspend the repo-template server so that it resopnds to requests|
 |`status`|Return whether the server is suspended or responding to commands|
+|'reloadRepoConfigs'|Reload repository configurations|
 |`create-repo targetHost newRepoName repoConfigName <ownerName | orgName>`|Create a new repository on 'github.foo.com' named 'NewRepo', using the parameters defined in ./config/repo_templates/default.json and owned by the octocat org.|
 
 
@@ -89,6 +91,10 @@ Usage:  `repo-template.sh cmd <options>`
   events or suspended
 
       repo-template status
+      
+  Reload repository configurations
+        
+      repo-template reloadRepoConfigs
 
   Create a new repository on 'github.foo.com' named 'NewRepo', using the
   parameters defined in ./config/repo_templates/default.json and owned by the
@@ -250,3 +256,7 @@ For more information, see the [API Docs](https://developer.github.com/v3/repos/b
 
 
 ```
+## Logging
+ - The server system log is written to `./log/repo-template.log`
+ - Log info for each repository creation job is written to the `./log` directory
+ with the jobID as the filename.

@@ -4,32 +4,32 @@
  */
 
 "use strict";
-var URL = require('url');
 var logger = require('./lib/logger.js');
 var arrayUtil = require('./lib/arrayUtil.js');
 
 //Native NodeJS url package keeps coming up undefined...
-var URL = require('url');
-var b64 = require('js-base64').Base64;
-var crypto = require('crypto');
-var exec = require('child_process').exec;
+//var URL = require('url');
+//var b64 = require('js-base64').Base64;
+//var crypto = require('crypto');
+//var exec = require('child_process').exec;
 var GitHubClient = require("github"); //https://github.com/mikedeboer/node-github
 var globalConfig = require("./config/config.json");
 var fs = require('fs');
 var http = require('http');
 var Job = require('./lib/job.js');
-
 var HttpDispatcher = require('httpdispatcher');
 var dispatcher     = new HttpDispatcher();
 const PORT = 3000;
-var parse = require('date-fns/parse');  //https://github.com/date-fns/date-fns
-var format = require('date-fns/format');  //https://github.com/date-fns/date-fns
+//var parse = require('date-fns/parse');  //https://github.com/date-fns/date-fns
+//var format = require('date-fns/format');  //https://github.com/date-fns/date-fns
 var differenceInMilliseconds = require('date-fns/difference_in_milliseconds'); //https://github.com/date-fns/date-fns
 var jobs = [];
 var suspended = false;
 
 
 logger.syslog("Server startup","Starting");
+
+//Load repository configs
 loadRepoConfigs();
 
 
@@ -149,7 +149,7 @@ dispatcher.onGet('/stop', function(req,res)
     process.exit(0);
 });
 
-dispatcher.onGet('/loadRepoConfigs', function(req,res)
+dispatcher.onGet('/reloadRepoConfigs', function(req,res)
 {
     logger.syslog("Received request to reload repository configurations", "Running");
     try
@@ -158,11 +158,13 @@ dispatcher.onGet('/loadRepoConfigs', function(req,res)
     }
     catch(e)
     {
+        logger.syslog("Error loading repository configurations. " + e.message);
         res.writeHead(400, {'Content-Type': 'text/plain'});
         res.end(JSON.stringify("Error loading repository configurations. " + e.message));
         return;
     }
 
+    logger.syslog(globalConfig.repoConfigs.length + " configurations loaded.");
     res.writeHead(200, {'Content-Type': 'text/plain'});
     res.end(globalConfig.repoConfigs.length + " configurations loaded.");
 
@@ -197,7 +199,7 @@ dispatcher.onPost('/createRepo', function (req, res)
     catch(e)
     {
         logger.syslog("Exception processing request: " + e.message,"Error");
-        res.writeHead(400, {'Content-Type': 'text/plain'});
+        res.writeHead(400, {'Content-Type': 'application/json'});
         res.end(JSON.stringify("Invalid request: " + e.message));
         return;
     }
@@ -212,8 +214,8 @@ dispatcher.onPost('/createRepo', function (req, res)
 
     jobs.push(job);
     logger.syslog("Processing request: " + job.config.params.configName + " jobID: " + job.jobID,"Processing");
-    res.writeHead(200, {'Content-Type': 'text/plain'});
-    res.end(JSON.stringify("Processing request.  JobID: " + job.jobID));
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify("{JobID: " + job.jobID));
 
     createRepo(job);
 
@@ -325,13 +327,6 @@ function configBranches(job, repoConfig)
         branch: 'master'
     }).then(function (err, res)
         {
-            /*job.github.gitdata.getTree(
-                {owner: job.repository.owner.login
-                 ,repo: job.repository.name
-                 ,sha: err.commit.commit.tree.sha
-                 ,recursive: true}
-            )}).then(function(err, res)
-            */
             job.commitSHA = err.commit.sha;
                 for(var i = 0; i < repoConfig.branches.length; i++)
                 {
@@ -367,11 +362,17 @@ function configBranches(job, repoConfig)
                                 if (branch.protection.restrictions) {
                                     params.restrictions = JSON.parse(JSON.stringify(branch.protection.restrictions));
                                 }
-                                job.github.repos.updateBranchProtection(params)
+                                job.github.repos.updateBranchProtection(params).then(function(err,res){
+                                    logger.log("Repository creation complete: " + job.repository.name);
+                                    logger.syslog("Repository creation complete: " + job.repository.name);
+                                    logger.log("Repository creation complete", job, "Done");
+                                    job.flushToFile();
+                                })
                             }})
                     }
                 }
             });
+
 };
 
 //From filesystem for now, ultimately from configured repository
@@ -391,7 +392,6 @@ function loadRepoConfigs()
         //Is it a JSON file? Or at least, does it have the extension JSON?
         if(fileNames[i].split('.').pop() === 'json')
         {
-
             try {
                 config = JSON.parse(fs.readFileSync('./config/repo_templates/' + fileNames[i]));
                 globalConfig.repoConfigs.push(JSON.parse(fs.readFileSync('./config/repo_templates/' + fileNames[i])));

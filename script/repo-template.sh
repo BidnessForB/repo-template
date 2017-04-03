@@ -24,6 +24,8 @@
 #/
 #/  status  Return whether the server is suspended or responding to commands
 #/
+#/  reloadRepoConfigs Reload repository configurations
+#/
 #/  create-repo targetHost newRepoName repoConfigName <ownerName | orgName>
 #/
 #/
@@ -65,6 +67,10 @@
 #/  events or suspended
 #/
 #/      repo-template status
+#/
+#/  Reload repository configurations
+#/
+#/      repo-template reloadRepoConfigs
 #/
 #/  Create a new repository on 'github.foo.com' named 'NewRepo', using the
 #/  parameters defined in ./config/repo_templates/default.json and owned by the
