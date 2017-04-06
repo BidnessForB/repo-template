@@ -8,7 +8,7 @@ var logger = require('./lib/logger.js');
 var arrayUtil = require('./lib/arrayUtil.js');
 
 //Native NodeJS url package keeps coming up undefined...
-//var URL = require('url');
+var URL = require('url');
 
 //var crypto = require('crypto');
 //var exec = require('child_process').exec;
@@ -82,6 +82,120 @@ function dispatchRequest(request, response)
     }
 }
 
+dispatcher.onPost('/repocreated', function(req,res)
+{
+    console.log("foo");
+    logger.syslog("Repository creation event received","Running");
+    res.writeHead(202, {'Content-Type': 'text/plain'});
+    res.end("");
+
+   var repoJSON;
+    try
+    {
+        repoJSON = JSON.parse(req.body);
+    }
+    catch(e)
+    {
+        logger.syslog("Exception parsing repository create JSON","Repo Create Event",e);
+        return;
+    }
+
+    if(repoJSON.action != 'created')
+    {
+        logger.syslog("Ignoring repository creation event action: " + repoJSON.action, "Repo Create Event");
+        return;
+    }
+
+    var expr = 'Created by repo-template';
+    if(repoJSON.repository.description && repoJSON.repository.description.search(expr))
+    {
+        logger.syslog("Ignoring repository created by repo-template","Repo Create Event");
+        return;
+    }
+
+
+    var URL = require('url');
+
+    if(!URL.parse(req.url).query)
+    {
+        logger.syslog('No parameters found for repository creation event','Repo Create Event');
+        return;
+    }
+
+    var configName;
+
+    try
+    {
+        configName = URL.parse(req.url).query.split('=')[1]
+    }
+    catch(e)
+    {
+        logger.syslog('Error parsing parameters from url: ' + req.url);
+        return;
+    }
+
+    var repoConfig = arrayUtil.getArrayElementByKey(globalConfig.repoConfigs,configName,'configName');
+
+    if(repoConfig === null)
+    {
+        logger.syslog('Could not find repository configuration with name: ' + configName);
+        return;
+    }
+
+    var jobConfig = JSON.parse(JSON.stringify(globalConfig));
+    jobConfig.params.username=globalConfig.adminUsername;
+    jobConfig.params.targetHost = URL.parse(repoJSON.repository.html_url).hostname;
+    jobConfig.params.configName = configName;
+    jobConfig.params.userPAT = globalConfig.AdminGitHubPAT;
+    jobConfig.params.username = globalConfig.adminUsername;
+    jobConfig.params.orgName = repoJSON.repository.owner.login;
+
+
+
+
+
+
+    var job = new Job(jobConfig);
+    job.repoConfig = repoConfig;
+    jobs.push(job);
+    logger.syslog("Processing repository creation event request: " + job.config.params.configName + " jobID: " + job.jobID,"Processing");
+
+    //Make sure the repository is initialized
+    /*
+    cd
+    echo "Created by repo-template" >> repo-template.md
+    git init
+    git add README.md
+    git commit -m "first commit"
+    git remote add origin https://github.com/BidnessForB/foo.git
+    git push -u origin master
+    */
+
+    exec("base64 -i " + path + ".pdf" + " -o " + path + ".pdf.64", function (error, stdout, stderr) {
+        if (error !== null) {
+            logger.log('Error writing out base64: ' + error, job);
+            logger.log('stdout: ' + stdout, job);
+            logger.log('stderr: ' + stderr, job);
+        }
+        else {
+            //Now the encoded file is itself encoded in UTF-8, which we'll send up to GitHub
+
+
+
+
+
+            job.github.repos.get({
+        "owner":repoJSON.repository.owner.login
+        ,"repo":repoJSON.repository.name
+    }).then(function(err,res){
+        job.repository = JSON.parse(JSON.stringify(err));
+        configureTeams(job);
+    })
+
+
+
+});
+
 dispatcher.onGet('/suspend', function(req,res)
 {
     logger.syslog("Suspending server","Suspending");
@@ -101,6 +215,7 @@ dispatcher.onGet('/resume', function(req,res)
 
 dispatcher.onPost('/pullrequest', function(req,res)
 {
+
     res.writeHead(202, {'Content-Type': 'text/plain'});
     res.end("");
     if(suspended)
@@ -145,6 +260,7 @@ dispatcher.onPost('/pullrequest', function(req,res)
         logger.syslog("PR event missing parameters: " + JSON.stringify(params));
         return;
     }
+
 
     var jobConfig = JSON.parse(JSON.stringify(globalConfig));
     delete jobConfig.params;
@@ -282,8 +398,9 @@ dispatcher.onPost('/createRepo', function (req, res)
         res.end(JSON.stringify("Server is suspended.  Make a call to /resume"));
         return;
     }
-
-
+    var job = new Job(globalConfig);
+    res.writeHead(202, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify("{JobID: " + job.jobID));
 
     try {
         var params = JSON.parse(req.body);
@@ -310,12 +427,9 @@ dispatcher.onPost('/createRepo', function (req, res)
         return;
     }
 
-    var jobConfig = JSON.parse(JSON.stringify(globalConfig));
+
     delete jobConfig.params;
     jobConfig.params = params;
-    var job = new Job(jobConfig);
-    res.writeHead(202, {'Content-Type': 'application/json'});
-    res.end(JSON.stringify("{JobID: " + job.jobID));
     jobs.push(job);
     logger.syslog("Processing request: " + job.config.params.configName + " jobID: " + job.jobID,"Processing");
     createRepo(job);
@@ -329,7 +443,7 @@ function createRepo(job)
                 {
                     name: job.config.params.newRepoName
                     ,
-                    description: repoConfig.repositoryAttributes.description
+                    description: repoConfig.repositoryAttributes.description + "\r\nCreated by repo-template"
                     ,
                     homepage: repoConfig.repositoryAttributes.homepage
                     ,
@@ -384,16 +498,16 @@ function createRepo(job)
     }
 }
 
-function configureTeams(job, repoConfig) {
-    if (job.config.params.orgName && repoConfig.teams) {
+function configureTeams(job) {
+    if (job.config.params.orgName && job.repoConfig.teams) {
         //Get teams
         //Add specified teams
         var team;
         job.github.orgs.getTeams({org: job.config.params.orgName})
             .then(function (err, res) {
-                for (var i = 0; i < repoConfig.teams.length; i++) {
+                for (var i = 0; i < job.repoConfig.teams.length; i++) {
                     //Make sure
-                    team = arrayUtil.getArrayElementByKey(err, repoConfig.teams[i].team, "name");
+                    team = arrayUtil.getArrayElementByKey(err, job.repoConfig.teams[i].team, "name");
                     if (team != null) {
                         job.github.orgs.addTeamRepo({
                             id: team.id
@@ -407,8 +521,8 @@ function configureTeams(job, repoConfig) {
             }).then(function (err, res) {
             //Configure branches
 
-            if (repoConfig.branches) {
-               configBranches(job, repoConfig);
+            if (job.repoConfig.branches) {
+               configBranches(job);
             }
         }).catch(function (err)
             {
@@ -418,7 +532,7 @@ function configureTeams(job, repoConfig) {
     }
 }
 
-function configBranches(job, repoConfig)
+function configBranches(job)
 {
     //Create a ref with the SHA of the HEAD commit to branch from
     //So first, get the ref
@@ -432,17 +546,17 @@ function configBranches(job, repoConfig)
     }).then(function (err, res)
         {
             job.commitSHA = err.commit.sha;
-                for(var i = 0; i < repoConfig.branches.length; i++)
+                for(var i = 0; i < job.repoConfig.branches.length; i++)
                 {
                     //skip master.  Later find out what the default branch is and skip it
-                    if(repoConfig.branches[i].name != 'master') {
+                    if(job.repoConfig.branches[i].name != 'master') {
                         job.github.gitdata.createReference(
                             {
                                 owner: job.repository.owner.login
                                 ,
                                 repo: job.repository.name
                                 ,
-                                ref: 'refs/heads/' + repoConfig.branches[i].name
+                                ref: 'refs/heads/' + job.repoConfig.branches[i].name
                                 ,
                                 sha: job.commitSHA
                             }
