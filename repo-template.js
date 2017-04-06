@@ -101,18 +101,52 @@ dispatcher.onGet('/resume', function(req,res)
 
 dispatcher.onPost('/pullrequest', function(req,res)
 {
-   var PR = JSON.parse(req.body);
-    if(!PR.pull_request.merged)
+    res.writeHead(202, {'Content-Type': 'text/plain'});
+    res.end("");
+    if(suspended)
+   {
+       logger.syslog("PR event skipped: suspended","Suspended");
+       return;
+   }
+    var PR = JSON.parse(req.body);
+    if(!PR.pull_request.merged || PR.pull_request.body.length < 18)
     {
         logger.syslog("Unmerged PR events","Running");
         return;
     }
+    var PRBody = PR.pull_request.body.replace(/[\n\r]+/g,'')
+    var params;
+    if(PRBody.substring(0,18) != 'REPOSITORY_REQUEST')
+    {
+        logger.syslog("Ignoring non repository request PR", "Running");
+        return;
+    }
 
+    try
+    {
+        params = JSON.parse(PRBody.substring(18));
+    }
+    catch(e)
+    {
+        logger.syslog("Error parsing Pull Request JSON: " + e.message, "PR Failed",e);
+        return;
+    }
 
+    params.userPAT = globalConfig.AdminGitHubPAT;
 
-    console.log(req);
+    if (!params.targetHost || !params.newRepoName || !params.configName || !params.orgName || !params.userPAT || !params.username)
+    {
+        logger.syslog("PR event missing parameters: " + JSON.stringify(params));
+        return;
+    }
 
-
+    var jobConfig = JSON.parse(JSON.stringify(globalConfig));
+    delete jobConfig.params;
+    jobConfig.params = params;
+    var job = new Job(jobConfig);
+    jobs.push(job);
+    logger.syslog("Processing request: " + job.config.params.configName + " jobID: " + job.jobID,"Processing");
+    createRepo(job);
 });
 
 dispatcher.onPost('/status', function(req,res)
@@ -235,34 +269,24 @@ dispatcher.onGet('/reloadRepoConfigs', function(req,res)
 //return the job log data.
 dispatcher.onPost('/createRepo', function (req, res)
 {
-    var repositoryExists;
     if(suspended)
     {
         logger.syslog("Server is suspended. Ignoring request","Suspended");
         res.writeHead(400, {'Content-Type': 'text/plain'});
         res.end(JSON.stringify("Server is suspended.  Make a call to /resume"));
         return;
-
     }
 
-    var params = JSON.parse(req.body);
 
-    try
-    {
-        if (!params.targetHost || !params.newRepoName || !params.configName || !params.orgName || !params.userPAT || !params.username)
-        {
+
+    try {
+        var params = JSON.parse(req.body);
+        if (!params.targetHost || !params.newRepoName || !params.configName || !params.orgName || !params.userPAT || !params.username) {
             logger.syslog("Invalid request", "Error");
             res.writeHead(400, {'Content-Type': 'text/plain'});
-            res.end(JSON.stringify("Invalid request, missing parameter"));
+            res.end("Invalid request, missing parameter");
             return;
         }
-
-
-        var jobConfig = JSON.parse(JSON.stringify(globalConfig));
-        delete jobConfig.params;
-        jobConfig.params = params;
-
-        var job = new Job(jobConfig);
     }
     catch(e)
     {
@@ -272,13 +296,18 @@ dispatcher.onPost('/createRepo', function (req, res)
         return;
     }
 
-    if(arrayUtil.findValueInArray(globalConfig.repoConfigs,job.config.params.configName,"configName") === null)
+   if(arrayUtil.findValueInArray(globalConfig.repoConfigs,params.configName,"configName") === null)
     {
         logger.syslog("Requested configuration not found: " + job.config.params.configName, "Error");
         res.writeHead(400, {'Content-Type': 'text/plain'});
         res.end(JSON.stringify("Invalid request.  Requested configuration not found: " + job.config.params.configName));
         return;
     }
+
+    var jobConfig = JSON.parse(JSON.stringify(globalConfig));
+    delete jobConfig.params;
+    jobConfig.params = params;
+    var job = new Job(jobConfig);
     res.writeHead(202, {'Content-Type': 'application/json'});
     res.end(JSON.stringify("{JobID: " + job.jobID));
     jobs.push(job);
