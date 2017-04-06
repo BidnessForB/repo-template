@@ -104,7 +104,7 @@ dispatcher.onPost('/pullrequest', function(req,res)
    var PR = JSON.parse(req.body);
     if(!PR.pull_request.merged)
     {
-        logger.syslog("Unmerged PR event","Running");
+        logger.syslog("Unmerged PR events","Running");
         return;
     }
 
