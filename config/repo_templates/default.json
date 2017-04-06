@@ -1,21 +1,37 @@
 {
-   "config-name":"default"
-  ,"config-type":"repository"
-  ,"owning-organization":"bryancross"
-  ,"repository-attributes":
+   "configName":"default"
+  ,"configType":"repository"
+  ,"owningOrganization":"bryancross"
+  ,"repositoryAttributes":
   {
-     "name":"default"
-    ,"description":"Default description"
-    ,"homepage":"https://github.com"
-    ,"private":false
-    ,"has_issues":true
-    ,"has_projects":true
-    ,"has_wiki":true
-    ,"team_id":-1
-    ,"auto_init":true
-    ,"gitignore_template":""
-    ,"license_template":"mit"
+   "name":"Default"
+  ,"description":"Default description"
+  ,"homepage":"https://github.com"
+  ,"private":false
+  ,"has_issues":true
+  ,"has_projects":true
+  ,"has_wiki":true
+  ,"auto_init":true
+  ,"gitignore_template":""
+  ,"license_template":"mit"
+  ,"allow_rebase_merge":true
+  ,"has_downloads":true
+  ,"allow_squash_merge":true
+  ,"allow_merge_commit":true
+  ,"team_id":-1
   }
+  ,"teams":
+    [
+      {
+         "team":"Developers"
+        ,"permission":"push"
+      }
+      ,
+      {
+         "team":"DevLeads"
+        ,"permission":"admin"
+      }
+    ]
   ,"branches":
         [
           {
@@ -35,10 +51,10 @@
               "enforce_admins": true,
               "restrictions": {
                 "users": [
-                  "octocat"
+                  "Mario"
                 ],
                 "teams": [
-                  "justice-league"
+                  "DevLeads"
                 ]
               }
             }
@@ -61,10 +77,11 @@
             "enforce_admins": true,
             "restrictions": {
               "users": [
-                "octocat"
+                "Mario"
               ],
               "teams": [
-                "justice-league"
+                "Developers"
+                ,"DevLeads"
               ]
             }
           }
