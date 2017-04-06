@@ -30,7 +30,7 @@ var suspended = false;
 logger.syslog("Server startup","Starting");
 
 adminGitHub = new GitHubClient({
-    debug: true //this.config.debug
+    debug: globalConfig.githubAPIDebug
     ,pathPrefix: globalConfig.TemplateSourceHost !== "github.com" ? "/api/v3" : ""
     ,host: globalConfig.TemplateSourceHost === 'github.com' ? 'api.github.com' : globalConfig.TemplateSourceHost
     ,protocol: "https"
@@ -99,6 +99,22 @@ dispatcher.onGet('/resume', function(req,res)
 
 });
 
+dispatcher.onPost('/pullrequest', function(req,res)
+{
+   var PR = JSON.parse(req.body);
+    if(!PR.pull_request.merged)
+    {
+        logger.syslog("Unmerged PR event","Running");
+        return;
+    }
+
+
+
+    console.log(req);
+
+
+});
+
 dispatcher.onPost('/status', function(req,res)
 {
 
@@ -143,12 +159,13 @@ dispatcher.onPost('/status', function(req,res)
         //Redact the PAT as well.
         try
         {
-            curJob.config.GitHubPAT = "<redacted>";
+            curJob.config.AdminGitHubPAT = "<redacted>";
             delete curJob["github"];
+            curJob.params.userPAT = "<redacted>";
         }
         catch(e)
         {
-            logger.syslog("No github object in job: " + id,"Error");
+            logger.syslog("No github object in job: " + jobID,"Error");
         }
         logger.syslog("Serviced status request for job with ID: " + curJob.jobID);
         res.writeHead(200, {'Content-Type': 'text/plain'});
@@ -307,11 +324,11 @@ function createRepo(job)
     if(!job.config.params.orgName) {
         job.github.repos.create(options)
             .then(function (err, res) {
-                logger.log("Repository created. ID: " + err.id);
+                logger.log("Repository created. ID: " + err.id,job,"Success");
                 job.repository = JSON.parse(JSON.stringify(err));
                 configureTeams(job,repoConfig);
             }).catch(function (err) {
-            logger.log("Error creating repository: " + err.message, job, "Failed", err);
+            logger.endlog("Error creating repository: " + err.message, job, "Failed", err);
             return;
         });
     }
@@ -320,14 +337,13 @@ function createRepo(job)
         options.org = job.config.params.orgName;
         job.github.repos.createForOrg(options)
             .then(function (err, res) {
-                logger.log("Repository created. ID: " + err.id);
+                logger.log("Repository created. ID: " + err.id,job,"Success");
                 job.repository = JSON.parse(JSON.stringify(err));
             }).then(function (err,res)
             {
                 configureTeams(job, repoConfig);
             }).catch(function (err) {
-                logger.log("Error creating repository: " + err.message, job, "Failed", err);
-                job.flushToFile();
+                logger.endlog("Error creating repository: " + err.message, job, "Failed", err);
                 return;
             });
     }
@@ -361,8 +377,7 @@ function configureTeams(job, repoConfig) {
             }
         }).catch(function (err)
             {
-               logger.log("Error creating branches")
-               job.flushToFile();
+               logger.endlog("Error creating branches", job, "Failed");
                return;
             });
     }
@@ -417,14 +432,13 @@ function configBranches(job, repoConfig)
                                     params.restrictions = JSON.parse(JSON.stringify(branch.protection.restrictions));
                                 }
                                 job.github.repos.updateBranchProtection(params).then(function(err,res){
-                                    logger.log("Repository creation complete: " + job.repository.name);
+                                    logger.endlog("Repository creation complete: " + job.repository.name,job,"Success");
                                     logger.syslog("Repository creation complete: " + job.repository.name);
-                                    job.flushToFile();
+
                                 })
                             }}).catch(function(err)
                         {
-                            logger.log("Error creating repository: " + err.message);
-                            job.flushToFile();
+                            logger.endlog("Error creating repository: " + err.message,job,"Failed");
                         })
                     }
                 }
@@ -476,7 +490,7 @@ function loadRepoConfigs()
     delete globalConfig["repoConfigs"];
     globalConfig.repoConfigs = [];
     logger.syslog("Loading repository configurations","Loading");
-    suspended = true;
+
     var repoDir =     adminGitHub.repos.getContent({
         "owner":globalConfig.TemplateSourceRepo.split('/')[0]
         ,"repo":globalConfig.TemplateSourceRepo.split('/').pop()
