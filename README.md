@@ -55,8 +55,8 @@ Usage:  `repo-template.sh cmd <options>`
 |`suspend`|Stop the repo-template server from resopnding to requests|
 |`resume`|Unsuspend the repo-template server so that it resopnds to requests|
 |`status`|Return whether the server is suspended or responding to commands|
-|'reloadRepoConfigs'|Reload repository configurations|
-|`create-repo targetHost newRepoName repoConfigName <ownerName | orgName>`|Create a new repository on 'github.foo.com' named 'NewRepo', using the parameters defined in ./config/repo_templates/default.json and owned by the octocat org.|
+|`reloadRepoConfigs`|Reload repository configurations|
+|`create-repo targetHost newRepoName repoConfigName orgName`|Create a new repository on 'github.foo.com' named 'NewRepo', using the parameters defined in ./config/repo_templates/default.json and owned by the octocat org.|
 
 
  OPTIONS:
