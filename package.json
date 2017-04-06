@@ -29,6 +29,7 @@
     "github-webhook-handler": "^0.6.0",
     "google-auth-library": "^0.10.0",
     "httpdispatcher": "^2.0.1",
+    "js-base64": "^2.1.9",
     "mkdirp": "^0.5.1",
     "request": "^2.79.0",
     "rimraf": "^2.5.4",

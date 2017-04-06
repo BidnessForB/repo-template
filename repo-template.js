@@ -9,10 +9,11 @@ var arrayUtil = require('./lib/arrayUtil.js');
 
 //Native NodeJS url package keeps coming up undefined...
 //var URL = require('url');
-//var b64 = require('js-base64').Base64;
+
 //var crypto = require('crypto');
 //var exec = require('child_process').exec;
 var GitHubClient = require("github"); //https://github.com/mikedeboer/node-github
+var adminGitHub  = require("github"); //https://github.com/mikedeboer/node-github
 var globalConfig = require("./config/config.json");
 var fs = require('fs');
 var http = require('http');
@@ -26,8 +27,23 @@ var differenceInMilliseconds = require('date-fns/difference_in_milliseconds'); /
 var jobs = [];
 var suspended = false;
 
-
 logger.syslog("Server startup","Starting");
+
+adminGitHub = new GitHubClient({
+    debug: true //this.config.debug
+    ,pathPrefix: globalConfig.TemplateSourceHost !== "github.com" ? "/api/v3" : ""
+    ,host: globalConfig.TemplateSourceHost === 'github.com' ? 'api.github.com' : globalConfig.TemplateSourceHost
+    ,protocol: "https"
+    ,headers: {"user-agent":"repo-template"}
+});
+
+var adminAuth = {
+    type: globalConfig.authType
+    , token: globalConfig.AdminGitHubPAT
+    , username: globalConfig.adminUsername
+};
+//authenticate using configured credentials
+adminGitHub.authenticate(adminAuth);
 
 //Load repository configs
 loadRepoConfigs();
@@ -38,6 +54,10 @@ globalConfig.pathPrefix = (globalConfig.targetHost !== "github.com") ? "/api/v3"
 
 //If we're going to GitHub, prepend the host with 'api', otherwise leave it be
 globalConfig.targetHost = (globalConfig.targetHost === "github.com") ? "api.github.com" : globalConfig.targetHost;
+
+
+
+
 
 //Create a server
 var server = http.createServer(dispatchRequest);
@@ -189,7 +209,7 @@ dispatcher.onGet('/reloadRepoConfigs', function(req,res)
     }
 
     logger.syslog(globalConfig.repoConfigs.length + " configurations loaded.");
-    res.writeHead(200, {'Content-Type': 'text/plain'});
+    res.writeHead(201, {'Content-Type': 'text/plain'});
     res.end(globalConfig.repoConfigs.length + " configurations loaded.");
 
 });
@@ -212,14 +232,20 @@ dispatcher.onPost('/createRepo', function (req, res)
 
     try
     {
-        if (!params.targetHost || !params.newRepoName || !params.configName || (!params.ownerName && !params.orgName))
+        if (!params.targetHost || !params.newRepoName || !params.configName || !params.orgName || !params.userPAT || !params.username)
         {
             logger.syslog("Invalid request", "Error");
             res.writeHead(400, {'Content-Type': 'text/plain'});
             res.end(JSON.stringify("Invalid request, missing parameter"));
             return;
         }
-        var job = new Job(globalConfig,params);
+
+
+        var jobConfig = JSON.parse(JSON.stringify(globalConfig));
+        delete jobConfig.params;
+        jobConfig.params = params;
+
+        var job = new Job(jobConfig);
     }
     catch(e)
     {
@@ -236,7 +262,7 @@ dispatcher.onPost('/createRepo', function (req, res)
         res.end(JSON.stringify("Invalid request.  Requested configuration not found: " + job.config.params.configName));
         return;
     }
-    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.writeHead(202, {'Content-Type': 'application/json'});
     res.end(JSON.stringify("{JobID: " + job.jobID));
     jobs.push(job);
     logger.syslog("Processing request: " + job.config.params.configName + " jobID: " + job.jobID,"Processing");
@@ -407,7 +433,7 @@ function configBranches(job, repoConfig)
 };
 
 //From filesystem for now, ultimately from configured repository
-function loadRepoConfigs()
+/*function loadRepoConfigs()
 {
 
     var fileNames = fs.readdirSync('./config/repo_templates');
@@ -438,4 +464,83 @@ function loadRepoConfigs()
         }
     }
     logger.syslog(globalConfig.repoConfigs.length + " repository configurations loaded.");
-}
+}*/
+
+function loadRepoConfigs()
+{
+
+    var configs = [];
+    var config;
+    logger.syslog("Loading configs", "Config");
+
+    delete globalConfig["repoConfigs"];
+    globalConfig.repoConfigs = [];
+    logger.syslog("Loading repository configurations","Loading");
+    suspended = true;
+    var repoDir =     adminGitHub.repos.getContent({
+        "owner":globalConfig.TemplateSourceRepo.split('/')[0]
+        ,"repo":globalConfig.TemplateSourceRepo.split('/').pop()
+        ,"path":globalConfig.TemplateSourcePath
+        ,"ref":globalConfig.TemplateSourceBranch
+    }).catch(function(err){
+        logger.syslog("Error retrieving repository configurations: " + err.message,"Failed");
+        process.exit(0);
+    });
+
+
+    var file = repoDir.then(function(err,res){
+        for(var i = 0;i < err.length; i++) {
+            adminGitHub.repos.getContent({
+                "owner": globalConfig.TemplateSourceRepo.split('/')[0]
+                , "repo": globalConfig.TemplateSourceRepo.split('/').pop()
+                , "path": err[i].path
+                , "ref": globalConfig.TemplateSourceBranch
+            }).then(function (err, res) {
+                var B64 = require('js-base64/base64.js').Base64;
+                var config = JSON.parse(B64.decode(err.content));
+                globalConfig.repoConfigs.push(config);
+                logger.syslog("Loaded config: " + config.configName,"Loading");
+            }).catch(function(err)
+            {
+                logger.syslog("Error loading repository configurations: " + err.message, "Failed");
+                process.exit(0);
+            });
+        }
+        });
+    };
+
+
+
+    /*
+
+    //get the directory
+    adminGitHub.repos.getContent({
+                        "owner":globalConfig.TemplateSourceRepo.split('/')[0]
+                        ,"repo":globalConfig.TemplateSourceRepo.split('/').pop()
+                        ,"path":globalConfig.TemplateSourcePath
+                        ,"ref":globalConfig.TemplateSourceBranch
+                    }).then(function(err,res){
+                for(var i = 0; i < err.length; i++)
+                {
+                    adminGitHub.repos.getContent({
+                        "owner":globalConfig.TemplateSourceRepo.split('/')[0]
+                        ,"repo":globalConfig.TemplateSourceRepo.split('/').pop()
+                        ,"path":err[i].path
+                        ,"ref":globalConfig.TemplateSourceBranch
+                    }).then(function(err,res){
+                        var b64 = require('js-base64/base64.js').Base64;
+
+
+
+
+                    })
+
+
+                }
+
+
+    })
+
+    //Get config files from repository
+
+*/

@@ -1,7 +1,7 @@
 {
    "configName":"default-error"
   ,"configType":"repository"
-  ,"owningOrganization":"rebelware"
+  ,"owningOrganization":"foo"
   ,"repositoryAttributes":
   {
    "name":"Default"
