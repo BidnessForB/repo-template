@@ -87,40 +87,62 @@ dispatcher.onPost('/status', function(req,res)
     if(!req.body)
     {
         statusJSON = {"serverState":suspended ? "suspended" : "active"}
+        logger.syslog("Received request when suspended","Suspended");
         res.writeHead(200, {'Content-Type': 'text/plain'});
         res.end(JSON.stringify(statusJSON));
+        return;
+    }
+    logger.syslog("Status request received","Status");
+    try
+    {
+        if(!JSON.parse(req.body).jobID)
+        {
+            logger.syslog("Invalid status request: no jobID parameter","Error");
+            res.writeHead(400, {'Content-Type': 'text/plain'});
+            res.end("Invalid status request: no jobID parameter","Error");
+        }
+    }
+    catch(e)
+    {
+        logger.syslog("Problem parsing JSON content for status request","Status",e);
+        res.writeHead(400, {'Content-Type': 'text/plain'});
+        res.end("Problem parsing JSON content for status request: " + e.message);
         return;
     }
 
     var jobID = JSON.parse(req.body).jobID;
 
     ///Search the array of jobs in memory
-    var id = arrayUtil.findValueInArray(jobs, jobID, "jobID");
-    if (id || id === 0) {
-        var status = JSON.parse(JSON.stringify(jobs[id]));
+    //var id = arrayUtil.findValueInArray(jobs, jobID, "jobID");
+    var curJob = arrayUtil.getArrayElementByKey(jobs,jobID,"jobID");
+    if(curJob)
+    {
+        curJob = JSON.parse(JSON.stringify(curJob));
 
         //Delete the github object, since it is 1000s of lines long
         //Redact the PAT as well.
         try
         {
-            status.config.GitHubPAT = "<redacted>";
-            delete status["github"];
-
+            curJob.config.GitHubPAT = "<redacted>";
+            delete curJob["github"];
         }
         catch(e)
         {
             logger.syslog("No github object in job: " + id,"Error");
         }
-
+        logger.syslog("Serviced status request for job with ID: " + curJob.jobID);
         res.writeHead(200, {'Content-Type': 'text/plain'});
-        res.end(JSON.stringify(status));
+        res.end(JSON.stringify(curJob));
         return;
     }
     //If we're still here the job is finished and the job object deleted from the global array
     //So let's see if there's info in the log...
     try
     {
-        var logData = fs.readFileSync('./log/' + jobID + '.json', "UTF-8");
+        var logData = fs.readFileSync('./log/' + jobID + '.log', "UTF-8");
+        logData = JSON.parse(logData);
+        logData.config.GitHubPAT = "<redacted>";
+        delete logData["github"];
         logData = JSON.stringify(logData);
         res.end(logData);
     }
@@ -129,11 +151,13 @@ dispatcher.onPost('/status', function(req,res)
         //no file found
         if(err.errno === -2)
         {
+            res.writeHead(404,{'Content-Type':'text/plain'})
             res.end("No job data found for job ID: " + jobID);
         }
         //something else went wrong
         else
         {
+            res.writeHead(500,{'Content-Type':'text/plain'});
             res.end('Error retrieving log file for job ID: ' + jobID + " " + err.message);
         }
     }
@@ -174,6 +198,7 @@ dispatcher.onGet('/reloadRepoConfigs', function(req,res)
 //return the job log data.
 dispatcher.onPost('/createRepo', function (req, res)
 {
+    var repositoryExists;
     if(suspended)
     {
         logger.syslog("Server is suspended. Ignoring request","Suspended");
@@ -211,14 +236,11 @@ dispatcher.onPost('/createRepo', function (req, res)
         res.end(JSON.stringify("Invalid request.  Requested configuration not found: " + job.config.params.configName));
         return;
     }
-
-    jobs.push(job);
-    logger.syslog("Processing request: " + job.config.params.configName + " jobID: " + job.jobID,"Processing");
     res.writeHead(200, {'Content-Type': 'application/json'});
     res.end(JSON.stringify("{JobID: " + job.jobID));
-
+    jobs.push(job);
+    logger.syslog("Processing request: " + job.config.params.configName + " jobID: " + job.jobID,"Processing");
     createRepo(job);
-
 });
 
 function createRepo(job)
@@ -279,6 +301,7 @@ function createRepo(job)
                 configureTeams(job, repoConfig);
             }).catch(function (err) {
                 logger.log("Error creating repository: " + err.message, job, "Failed", err);
+                job.flushToFile();
                 return;
             });
     }
@@ -310,7 +333,12 @@ function configureTeams(job, repoConfig) {
             if (repoConfig.branches) {
                configBranches(job, repoConfig);
             }
-        });
+        }).catch(function (err)
+            {
+               logger.log("Error creating branches")
+               job.flushToFile();
+               return;
+            });
     }
 }
 
@@ -365,10 +393,13 @@ function configBranches(job, repoConfig)
                                 job.github.repos.updateBranchProtection(params).then(function(err,res){
                                     logger.log("Repository creation complete: " + job.repository.name);
                                     logger.syslog("Repository creation complete: " + job.repository.name);
-                                    logger.log("Repository creation complete", job, "Done");
                                     job.flushToFile();
                                 })
-                            }})
+                            }}).catch(function(err)
+                        {
+                            logger.log("Error creating repository: " + err.message);
+                            job.flushToFile();
+                        })
                     }
                 }
             });
@@ -406,4 +437,5 @@ function loadRepoConfigs()
             logger.syslog("Skipping non JSON file " + fileNames[i], "Starting");
         }
     }
+    logger.syslog(globalConfig.repoConfigs.length + " repository configurations loaded.");
 }
