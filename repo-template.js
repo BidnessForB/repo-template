@@ -109,7 +109,13 @@ dispatcher.onPost('/pullrequest', function(req,res)
        return;
    }
     var PR = JSON.parse(req.body);
-    if(!PR.pull_request.merged || PR.pull_request.body.length < 18)
+    if(!PR.pull_request || !PR.pull_request.merged || PR.pull_request.body.length < 18)
+    {
+        logger.syslog("Unmerged PR events","Running");
+        return;
+    }
+
+    if(!PR.pull_request.merged)
     {
         logger.syslog("Unmerged PR events","Running");
         return;
