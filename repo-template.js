@@ -22,32 +22,11 @@ var suspended = false;
 
 logger.syslog("Server startup","Starting");
 
-
-adminGitHub = new GitHubClient({
-    debug: globalConfig.githubAPIDebug
-    ,pathPrefix: globalConfig.TemplateSourceHost !== "github.com" ? "/api/v3" : ""
-    ,host: globalConfig.TemplateSourceHost === 'github.com' ? 'api.github.com' : globalConfig.TemplateSourceHost
-    ,protocol: "https"
-    ,headers: {"user-agent":"repo-template"}
-});
-
-var adminAuth = {
-    type: globalConfig.authType
-    , token: globalConfig.AdminGitHubPAT
-    , username: globalConfig.adminUsername
-};
-//authenticate using configured credentials
-adminGitHub.authenticate(adminAuth);
+//load global config
+loadConfig();
 
 //Load repository configs
 loadRepoConfigs();
-
-
-//GitHub Enterprise uses /api/v3 as a prefix to REST calls, while GitHub.com does not.
-globalConfig.pathPrefix = (globalConfig.targetHost !== "github.com") ? "/api/v3" : "";
-
-//If we're going to GitHub, prepend the host with 'api', otherwise leave it be
-globalConfig.targetHost = (globalConfig.targetHost === "github.com") ? "api.github.com" : globalConfig.targetHost;
 
 //Create a server
 var server = http.createServer(dispatchRequest);
@@ -65,7 +44,6 @@ function dispatchRequest(request, response)
     try {
         //Dispatch
         dispatcher.dispatch(request, response);
-
     }
     catch (e) {
         logger.syslog(e)
@@ -95,8 +73,7 @@ dispatcher.onPost('/repocreated', function(req,res)
         return;
     }
 
-    var expr = 'Created by repo-template';
-    if(repoJSON.repository.description && repoJSON.repository.description.search(expr))
+    if(repoJSON.repository.description && repoJSON.repository.description.search(globalConfig.repoDescriptionSuffix))
     {
         logger.syslog("Ignoring repository created by repo-template","Repo Create Event");
         return;
@@ -135,7 +112,7 @@ dispatcher.onPost('/repocreated', function(req,res)
     jobConfig.params.username=globalConfig.adminUsername;
     jobConfig.params.targetHost = URL.parse(repoJSON.repository.html_url).hostname;
     jobConfig.params.configName = configName;
-    jobConfig.params.userPAT = globalConfig.AdminGitHubPAT;
+    jobConfig.params.userPAT = globalConfig.adminGitHubPAT;
     jobConfig.params.username = globalConfig.adminUsername;
     jobConfig.params.orgName = repoJSON.repository.owner.login;
 
@@ -150,16 +127,7 @@ dispatcher.onPost('/repocreated', function(req,res)
     jobs.push(job);
     logger.syslog("Processing repository creation event request: " + job.config.params.configName + " jobID: " + job.jobID,"Processing");
 
-    //Make sure the repository is initialized
-    /*
-    cd
-    echo "Created by repo-template" >> repo-template.md
-    git init
-    git add README.md
-    git commit -m "first commit"
-    git remote add origin https://github.com/BidnessForB/foo.git
-    git push -u origin master
-    */
+
     job.github.repos.get({
         "owner":repoJSON.repository.owner.login
         ,"repo":repoJSON.repository.name
@@ -210,15 +178,26 @@ dispatcher.onPost('/pullrequest', function(req,res)
     }
     var PRBody = PR.pull_request.body.replace(/[\n\r]+/g,'')
     var params;
-    if(PRBody.substring(0,18) != 'REPOSITORY_REQUEST')
+
+    var requestIndex = PRBody.indexOf("REPOSITORY_REQUEST") + 18;
+    var requestEndIndex = PRBody.indexOf("}",requestIndex);
+
+
+    if(requestIndex < 0)
     {
         logger.syslog("Ignoring non repository request PR", "Running");
         return;
     }
 
+    if(requestEndIndex < 0)
+    {
+        logger.syslog("Malformed pullrequest parameter block", "Failed");
+        return;
+    }
+
     try
     {
-        params = JSON.parse(PRBody.substring(18));
+        params = JSON.parse(PRBody.substring(requestIndex,requestEndIndex + 1));
     }
     catch(e)
     {
@@ -226,7 +205,7 @@ dispatcher.onPost('/pullrequest', function(req,res)
         return;
     }
 
-    params.userPAT = globalConfig.AdminGitHubPAT;
+    params.userPAT = globalConfig.adminGitHubPAT;
 
     if (!params.targetHost || !params.newRepoName || !params.configName || !params.orgName || !params.userPAT || !params.username)
     {
@@ -362,8 +341,30 @@ dispatcher.onGet('/stop', function(req,res)
     process.exit(0);
 });
 
-dispatch.onGet('/reloadConfig', function(req,res)
+dispatcher.onGet('/reloadConfig', function(req,res)
 {
+    logger.syslog("Reloading configuration","Reload");
+    var httpRetCode  =200;
+    var httpStatus;
+    try
+    {
+        loadConfig();
+        httpStatus="Configuration reloaded";
+    }
+    catch(e)
+    {
+        httpStatus="Error reloading config.  Server will exit";
+        httpRetCode=500;
+        logger.syslog("Error reloading configuration: " + e.message,"Failed",e);
+    }
+    res.writeHead(httpRetCode, {'Content-Type': 'text/plain'});
+    res.end(httpStatus);
+    if(httpRetCode === 500)
+    {
+        process.exit(0);
+    }
+
+
 
 })
 
@@ -449,7 +450,7 @@ function createRepo(job)
                 {
                     name: job.config.params.newRepoName
                     ,
-                    description: repoConfig.repositoryAttributes.description + " --Created by repo-template"
+                    description: repoConfig.repositoryAttributes.description + globalConfig.repoDescriptionSuffix
                     ,
                     homepage: repoConfig.repositoryAttributes.homepage
                     ,
@@ -654,5 +655,35 @@ function loadRepoConfigs()
 
 function loadConfig()
 {
+
+    if(globalConfig.repoConfigs)
+    {
+        var origRepoConfigs = JSON.parse(JSON.stringify(globalConfig.repoConfigs));
+    }
+    globalConfig = {};
+
+    globalConfig = JSON.parse(fs.readFileSync('./config/config.json'));
+    globalConfig.repoConfigs = origRepoConfigs;
+    adminGitHub = new GitHubClient({
+        debug: globalConfig.githubAPIDebug
+        ,pathPrefix: globalConfig.TemplateSourceHost !== "github.com" ? "/api/v3" : ""
+        ,host: globalConfig.TemplateSourceHost === 'github.com' ? 'api.github.com' : globalConfig.TemplateSourceHost
+        ,protocol: "https"
+        ,headers: {"user-agent":"repo-template"}
+    });
+
+    var adminAuth = {
+        type: globalConfig.authType
+        , token: globalConfig.adminGitHubPAT
+        , username: globalConfig.adminUsername
+    };
+//authenticate using configured credentials
+    adminGitHub.authenticate(adminAuth);
+
+    //GitHub Enterprise uses /api/v3 as a prefix to REST calls, while GitHub.com does not.
+    globalConfig.pathPrefix = (globalConfig.targetHost !== "github.com") ? "/api/v3" : "";
+
+//If we're going to GitHub, prepend the host with 'api', otherwise leave it be
+    globalConfig.targetHost = (globalConfig.targetHost === "github.com") ? "api.github.com" : globalConfig.targetHost;
 
 }

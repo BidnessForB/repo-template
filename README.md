@@ -13,32 +13,45 @@ configuration files.
 5. Run ./script/repo-template.sh with appropriate arguments to create a new 
    repository  
     `./script/repo_template.sh create-repo targetHost newRepoName repoConfigName <ownerName | orgName>`
+
+### Modes of operation
+    
+Repo-template can work in several different ways:
+    
+    1. As a command line tool allowing you to create repositories
+    2. By parsing specially formatted Pull Requests, creating repositories when the PRs are merged
+    3. In response to the Repository Create event, modifying new repositories.
+    
+In all cases, you can configure repo-template to:
+    
+ - Create a repository
+ - Add teams and individuals as collaborators
+ - Create branches
+ - Configure branch protection
     
 #### Postman REST API call configurations
 If you use [postman](https://www.getpostman.com/docs/) (which is _awesome_), you can import and use
 the postman collection stored in `./test/repo-template-postman_collection.json`.  Just be sure to 
 replace the place-holders with a properly scoped GitHub PAT.
     
-    
 #### Future work
   Some ideas which seem useful include:
   - [ ] Specify an existing repository as a template
   - [ ] Specify a repository and create a configuration file describing it for future use
-  - [ ] Parse Pull Requests on merge for specific text which would trigger a new repository build.  Parameters to be included in the body of the PR
+  - [X] Parse Pull Requests on merge for specific text which would trigger a new repository build.  Parameters to be included in the body of the PR
   - [ ] Include webhooks in configuration of new repositories
-  - [ ] Manage configuration data in a repository rather than the filesystem.
+  - [X] Manage configuration data in a repository rather than the filesystem.
   
 #### TODO
   - [ ] Add tests
-  - [ ] Add provision for passing username and PAT as part of the request to the server
-  - [ ] Add provision to flush job log to file.
+  - [X] Add provision for passing username and PAT as part of the request to the server
+  - [X] Add provision to flush job log to file.
     
     
-### Usage
+### Command line Usage
 Usage:  `repo-template.sh cmd <options>`
 
-  Create a copy of a repository from a configuration file.  You can configure
-  repo-template to:
+  Create a copy of a repository from a configuration file.  
   
   - Create a repository
   - Add teams and individuals as collaborators
@@ -55,8 +68,9 @@ Usage:  `repo-template.sh cmd <options>`
 |`suspend`|Stop the repo-template server from resopnding to requests|
 |`resume`|Unsuspend the repo-template server so that it resopnds to requests|
 |`status`|Return whether the server is suspended or responding to commands|
-|'reloadRepoConfigs'|Reload repository configurations|
-|`create-repo targetHost newRepoName repoConfigName <ownerName | orgName>`|Create a new repository on 'github.foo.com' named 'NewRepo', using the parameters defined in ./config/repo_templates/default.json and owned by the octocat org.|
+|`reloadRepoConfigs`|Reload repository configurations|
+|`reloadConfig`|Reload the server configuration|
+|`create-repo targetHost newRepoName repoConfigName orgName`|Create a new repository on 'github.foo.com' named 'NewRepo', using the parameters defined in ./config/repo_templates/default.json and owned by the octocat org.|
 
 
  OPTIONS:
@@ -96,12 +110,75 @@ Usage:  `repo-template.sh cmd <options>`
         
       repo-template reloadRepoConfigs
 
+  Reload server configuration
+        
+      repo-template reloadServerConfig
+
   Create a new repository on 'github.foo.com' named 'NewRepo', using the
   parameters defined in ./config/repo_templates/default.json and owned by the
   octocat org.
 
       repo-template create-repo github.foo.com NewRepo default octocat
 
+## Calling the Server using REST
+
+All repo template functionality is available through the REST API.
+
+|Endpoint|parameters|Description|
+|--------|-----------|----------|
+|/repoCreated| - |Endpoint to trap repository create event.  Configure as an organization webhook|
+|/suspend| - | Suspend the server|
+|/resume| - | Resume the server|
+|/pullrequest| - | Endpoint to trap Pull Request merge events.  Configure as a repository webhook|
+|/stop| - | Shutdown the server|
+|/reloadConfig| - | Reload server configuration files|
+|/reloadRepoConfigs| - | Reload repository configuration files|
+|/status| `jobID` (optional) - ID of the job for which to report status<br/>`format`-If `'html'` return HTML, otherwise return JSON|Call with no arguments to return whether the server is suspended or not.  Call with jobID parameters to get the log for that job.  Optionally return results as JSON or HTML|
+|/createRepo| `targetHost` - Host to create the repository on<br/>`newRepoName` - Name of the new repository<br/>`configName` - Repository configuration to use<br/>`orgName` - Organization owning the new Repo<br/>`userPAT` - PAT of an org or site admin<br/>`username` - Username corresponding to the userPAT| Create a repository with the specified configuration|
+
+              
+## Responding to Pull Requests
+              
+repo-template can respond to specially formatted Pull Requests, creating repositories
+based on configuration information in the Pull Request.  To configure Pull Request events:
+
+1. Create a webhook in a repository pointing to the /pullrequest endpoint
+2. Configure the webhook to respond to Pull Request events
+3. Create a Pull Request
+4. Include configuration parameters as well as the REPOSITORY_REQUEST token in the body of the PR, e.g.:
+`REPOSITORY_REQUEST
+{"targetHost":"github.com"
+ ,"newRepoName":"AutoRepo"
+ ,"configName":"default"
+ ,"orgName":"bidnessforb"
+ ,"username":"bryancross"}`
+ 
+ <<image>>
+ 
+ 
+5. When the PR is merged, the webhook will send the configuration parameters to the /pullrequest endpoint
+
+Once the repository is created, repo-template will create an issue with a link to the log file for the 
+creation process
+
+<<image>>
+
+## Responding to repository creation events
+
+Repo-template can detect when users create repositories in an organization and intervene to apply repository configurations
+to these new repositories.  This can be useful for enforcing branch and branch protection configuration, adding default teams, etc.
+
+To enable repo-template to respond to repository creation events:
+
+1. Create an organization webhook pointing to the `/repocreated` endpoint.
+2. Configure the webhook to send Repository events.
+
+Once the repository is created, repo-template will create an issue with a link to the log file for the 
+modification process.
+
+<<image>>
+
+      
 ## Application Configuration
 
 There are two application level configurations:
@@ -117,28 +194,20 @@ and `userName` elements must be specified at this time.
 NOTE: The user specified must currently be a site admin
 
 ```json
-   "jobID": ""
-  ,"startTime": ""
-  ,"msgs": []
-  ,"GitHubPAT":"<xxxxxxxxxxxxxxxxxxxx>" //properly scoped PAT.
+  ,"adminGitHubPAT":"<xxxxxxxxxxxxxxxxxxxx>" //properly scoped PAT for an org owner or site admin. 
+  ,"adminUserName":"" //Username corresponding to the adminGitHubPAT
   ,"authType":"oauth" //auth type.  Currently only oauth is supported
-  ,"user":"admackbar" //user associated with the PAT
-  ,"TemplateSourceHost":"octodemo.com" //not implemented
-  ,"TemplateSourceRepo":"bryancross/repo-template" //not implemented
-  ,"TemplateSourcePath":"config/repo_templates" //not implemented
-  ,"commitMsg":"Auto committed by repo-template" //not implemented
-  ,"deleteTempDir":true
-  ,"userAgent":"repo-template"
-  ,"listenOnPort":3000
-  ,"callback": ""
-  ,"debug":false
-  ,"jobsLimit":1000
-  ,"debug":false
-  ,"errors":[]
-  ,"status":""
-  ,"tempDir":""
-  ,"endTime":""
-  ,"duration":""
+  ,"adminUsername":"admackbar" //user associated with the PAT
+  ,"TemplateSourceHost":"octodemo.com" //Host for repository where repository configurations are stored
+  ,"TemplateSourceRepo":"bryancross/repo-template" //Repository where repository configurations are stored
+  ,"TemplateSourcePath":"config/repo_templates" //Path in repository where repository configurations are stored
+  ,"repoDescriptionSuffix":"--Created by repo-template" //Suffix appended to repository descriptions
+  ,"userAgent":"repo-template" //User agent to use in GitHubAPI REST calls
+  ,"listenOnPort":3000 //Server port
+  ,"callback": "" //Not implemented
+  ,"jobsLimit":1000 //Maximum number of jobs to retain in memory
+  ,"gitAPIDebug":false //Set debug flag for GitHubAPI
+  ,"statusCallbackURL":"https://976986a5.ngrok.io/status" //URL to append to issues and comments pointing to the /status endpoint
 ```
 
 ### Command line configuration
@@ -260,3 +329,5 @@ For more information, see the [API Docs](https://developer.github.com/v3/repos/b
  - The server system log is written to `./log/repo-template.log`
  - Log info for each repository creation job is written to the `./log` directory
  with the jobID as the filename.
+ 
+ 
