@@ -71,6 +71,11 @@
 #/  Reload repository configurations
 #/
 #/      repo-template reloadRepoConfigs
+
+#/  Reload server configuration
+#/
+#/      repo-template reloadConfig
+
 #/
 #/  Create a new repository on 'github.foo.com' named 'NewRepo', using the
 #/  parameters defined in ./config/repo_templates/default.json and owned by the
@@ -113,7 +118,7 @@ do
             node repo-template.js
             exit 0
             ;;
-        stop|suspend|resume|status)
+        stop|suspend|resume|status|reloadRepoConfigs|reloadServerConfig)
             echo "Attempting to ${1} repo-template server"
             curl -X GET ${REPO_TEMPLATE_URL}/${1}
             exit 0

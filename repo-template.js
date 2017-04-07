@@ -7,11 +7,6 @@
 var logger = require('./lib/logger.js');
 var arrayUtil = require('./lib/arrayUtil.js');
 
-//Native NodeJS url package keeps coming up undefined...
-var URL = require('url');
-
-//var crypto = require('crypto');
-//var exec = require('child_process').exec;
 var GitHubClient = require("github"); //https://github.com/mikedeboer/node-github
 var adminGitHub  = require("github"); //https://github.com/mikedeboer/node-github
 var globalConfig = require("./config/config.json");
@@ -21,43 +16,17 @@ var Job = require('./lib/job.js');
 var HttpDispatcher = require('httpdispatcher');
 var dispatcher     = new HttpDispatcher();
 const PORT = 3000;
-//var parse = require('date-fns/parse');  //https://github.com/date-fns/date-fns
-//var format = require('date-fns/format');  //https://github.com/date-fns/date-fns
 var differenceInMilliseconds = require('date-fns/difference_in_milliseconds'); //https://github.com/date-fns/date-fns
 var jobs = [];
 var suspended = false;
 
 logger.syslog("Server startup","Starting");
 
-adminGitHub = new GitHubClient({
-    debug: globalConfig.githubAPIDebug
-    ,pathPrefix: globalConfig.TemplateSourceHost !== "github.com" ? "/api/v3" : ""
-    ,host: globalConfig.TemplateSourceHost === 'github.com' ? 'api.github.com' : globalConfig.TemplateSourceHost
-    ,protocol: "https"
-    ,headers: {"user-agent":"repo-template"}
-});
-
-var adminAuth = {
-    type: globalConfig.authType
-    , token: globalConfig.AdminGitHubPAT
-    , username: globalConfig.adminUsername
-};
-//authenticate using configured credentials
-adminGitHub.authenticate(adminAuth);
+//load global config
+loadConfig();
 
 //Load repository configs
 loadRepoConfigs();
-
-
-//GitHub Enterprise uses /api/v3 as a prefix to REST calls, while GitHub.com does not.
-globalConfig.pathPrefix = (globalConfig.targetHost !== "github.com") ? "/api/v3" : "";
-
-//If we're going to GitHub, prepend the host with 'api', otherwise leave it be
-globalConfig.targetHost = (globalConfig.targetHost === "github.com") ? "api.github.com" : globalConfig.targetHost;
-
-
-
-
 
 //Create a server
 var server = http.createServer(dispatchRequest);
@@ -75,7 +44,6 @@ function dispatchRequest(request, response)
     try {
         //Dispatch
         dispatcher.dispatch(request, response);
-
     }
     catch (e) {
         logger.syslog(e)
@@ -105,8 +73,7 @@ dispatcher.onPost('/repocreated', function(req,res)
         return;
     }
 
-    var expr = 'Created by repo-template';
-    if(repoJSON.repository.description && repoJSON.repository.description.search(expr))
+    if(repoJSON.repository.description && repoJSON.repository.description.search(globalConfig.repoDescriptionSuffix))
     {
         logger.syslog("Ignoring repository created by repo-template","Repo Create Event");
         return;
@@ -145,7 +112,7 @@ dispatcher.onPost('/repocreated', function(req,res)
     jobConfig.params.username=globalConfig.adminUsername;
     jobConfig.params.targetHost = URL.parse(repoJSON.repository.html_url).hostname;
     jobConfig.params.configName = configName;
-    jobConfig.params.userPAT = globalConfig.AdminGitHubPAT;
+    jobConfig.params.userPAT = globalConfig.adminGitHubPAT;
     jobConfig.params.username = globalConfig.adminUsername;
     jobConfig.params.orgName = repoJSON.repository.owner.login;
 
@@ -160,26 +127,14 @@ dispatcher.onPost('/repocreated', function(req,res)
     jobs.push(job);
     logger.syslog("Processing repository creation event request: " + job.config.params.configName + " jobID: " + job.jobID,"Processing");
 
-    //Make sure the repository is initialized
-    /*
-    cd
-    echo "Created by repo-template" >> repo-template.md
-    git init
-    git add README.md
-    git commit -m "first commit"
-    git remote add origin https://github.com/BidnessForB/foo.git
-    git push -u origin master
-    */
+
     job.github.repos.get({
         "owner":repoJSON.repository.owner.login
         ,"repo":repoJSON.repository.name
     }).then(function(err,res){
         job.repository = JSON.parse(JSON.stringify(err));
         configureTeams(job);
-    })
-
-
-
+    });
 });
 
 dispatcher.onGet('/suspend', function(req,res)
@@ -212,26 +167,37 @@ dispatcher.onPost('/pullrequest', function(req,res)
     var PR = JSON.parse(req.body);
     if(!PR.pull_request || !PR.pull_request.merged || PR.pull_request.body.length < 18)
     {
-        logger.syslog("Unmerged PR events","Running");
+        logger.syslog("Non-merge PR event","Running");
         return;
     }
 
     if(!PR.pull_request.merged)
     {
-        logger.syslog("Unmerged PR events","Running");
+        logger.syslog("Non-merge PR event","Running");
         return;
     }
     var PRBody = PR.pull_request.body.replace(/[\n\r]+/g,'')
     var params;
-    if(PRBody.substring(0,18) != 'REPOSITORY_REQUEST')
+
+    var requestIndex = PRBody.indexOf("REPOSITORY_REQUEST") + 18;
+    var requestEndIndex = PRBody.indexOf("}",requestIndex);
+
+
+    if(requestIndex < 0)
     {
         logger.syslog("Ignoring non repository request PR", "Running");
         return;
     }
 
+    if(requestEndIndex < 0)
+    {
+        logger.syslog("Malformed pullrequest parameter block", "Failed");
+        return;
+    }
+
     try
     {
-        params = JSON.parse(PRBody.substring(18));
+        params = JSON.parse(PRBody.substring(requestIndex,requestEndIndex + 1));
     }
     catch(e)
     {
@@ -239,7 +205,7 @@ dispatcher.onPost('/pullrequest', function(req,res)
         return;
     }
 
-    params.userPAT = globalConfig.AdminGitHubPAT;
+    params.userPAT = globalConfig.adminGitHubPAT;
 
     if (!params.targetHost || !params.newRepoName || !params.configName || !params.orgName || !params.userPAT || !params.username)
     {
@@ -269,7 +235,7 @@ dispatcher.onPost('/pullrequest', function(req,res)
          "owner":PR.repository.owner.login
         ,"repo":PR.repository.name
         ,"number":PR.number
-        ,"body":"Your repo-template jobID: " + job.jobID + ". Check [here](http://https://976986a5.ngrok.io/status?jobID=" + job.jobID + " for status info."
+        ,"body":"Your repo-template jobID: " + job.jobID + ".\r\n Check [here](" + globalConfig.statusCallbackURL + "?jobID=" + job.jobID + "&format=html) for status info."
     }).then(function (req,res){
         job.PRCommentID = req.id;
         createRepo(job);
@@ -284,6 +250,7 @@ dispatcher.onGet('/status', function(req,res)
 
     var URL = require('url');
     var jobID;
+    var format = 'json';
 
 
     if(!URL.parse(req.url).query)
@@ -297,65 +264,72 @@ dispatcher.onGet('/status', function(req,res)
 
     try
     {
-        jobID = URL.parse(req.url).query.split('=')[1]
+        jobID = URL.parse(req.url).query.split('=')[1].split('&')[0];
     }
     catch(e)
     {
         logger.syslog('Error parsing parameters from url: ' + req.url,"Status");
         return;
     }
+    logger.syslog("Serviced status request for job with ID: " + jobID);
+    try
+    {
+        var formatParam = URL.parse(req.url).query.split('=')[2];
+        if (formatParam === 'html')
+        {
+            format = 'html';
+        }
+    }
+    catch(e)
+    {
+        logger.syslog("No format parameter specified.  Returning JSON","Status");
+    }
 
     ///Search the array of jobs in memory
     //var id = arrayUtil.findValueInArray(jobs, jobID, "jobID");
     var curJob = arrayUtil.getArrayElementByKey(jobs,jobID,"jobID");
+    var logData;
+    var logDataHTML;
     if(curJob)
     {
-        curJob = JSON.parse(JSON.stringify(curJob));
-
-        //Delete the github object, since it is 1000s of lines long
-        //Redact the PAT as well.
+        logData = curJob.cleanse();
+        logDataHTML = curJob.getHTML();
+    }
+    else
+    {
         try
         {
-            curJob.config.AdminGitHubPAT = "<redacted>";
-            delete curJob["github"];
-            curJob.params.userPAT = "<redacted>";
+            logData = JSON.parse(fs.readFileSync('./log/' + jobID + '.log', "UTF-8"));
+            logDataHTML = "<!DOCTYPE html><html><body><h2>Repository Creation Job: " + logData.jobID + " Status: " + logData.status + " </h2><br/><pre>" + JSON.stringify(logData,null,4) + "</pre></body></html>";
         }
-        catch(e)
+        catch(err)
         {
-            logger.syslog("No github object in job: " + jobID,"Error");
+            //no file found
+            if(err.errno === -2)
+            {
+                res.writeHead(404,{'Content-Type':'text/plain'})
+                res.end("No job data found for job ID: " + jobID);
+            }
+            //something else went wrong
+            else
+            {
+                res.writeHead(500,{'Content-Type':'text/plain'});
+                res.end('Error retrieving log file for job ID: ' + jobID + " " + err.message);
+            }
         }
-        logger.syslog("Serviced status request for job with ID: " + curJob.jobID);
-        res.writeHead(200, {'Content-Type': 'text/plain'});
-        res.end(JSON.stringify(curJob));
-        return;
     }
     //If we're still here the job is finished and the job object deleted from the global array
     //So let's see if there's info in the log...
-    try
-    {
-        var logData = fs.readFileSync('./log/' + jobID + '.log', "UTF-8");
-        logData = JSON.parse(logData);
-        logData.config.GitHubPAT = "<redacted>";
-        delete logData["github"];
-        logData = JSON.stringify(logData);
-        res.end(logData);
-    }
-    catch(err)
-    {
-        //no file found
-        if(err.errno === -2)
+        if(format === 'html')
         {
-            res.writeHead(404,{'Content-Type':'text/plain'})
-            res.end("No job data found for job ID: " + jobID);
+            res.writeHead(200, {'Content-Type': 'text/html'});
+            res.end(logDataHTML);
         }
-        //something else went wrong
         else
         {
-            res.writeHead(500,{'Content-Type':'text/plain'});
-            res.end('Error retrieving log file for job ID: ' + jobID + " " + err.message);
+            res.writeHead(200, {'Content-Type': 'text/plain'});
+            res.end(JSON.stringify(logData));
         }
-    }
-
 });
 
 
@@ -366,6 +340,33 @@ dispatcher.onGet('/stop', function(req,res)
     res.end("Server shutting down");
     process.exit(0);
 });
+
+dispatcher.onGet('/reloadConfig', function(req,res)
+{
+    logger.syslog("Reloading configuration","Reload");
+    var httpRetCode  =200;
+    var httpStatus;
+    try
+    {
+        loadConfig();
+        httpStatus="Configuration reloaded";
+    }
+    catch(e)
+    {
+        httpStatus="Error reloading config.  Server will exit";
+        httpRetCode=500;
+        logger.syslog("Error reloading configuration: " + e.message,"Failed",e);
+    }
+    res.writeHead(httpRetCode, {'Content-Type': 'text/plain'});
+    res.end(httpStatus);
+    if(httpRetCode === 500)
+    {
+        process.exit(0);
+    }
+
+
+
+})
 
 dispatcher.onGet('/reloadRepoConfigs', function(req,res)
 {
@@ -449,7 +450,7 @@ function createRepo(job)
                 {
                     name: job.config.params.newRepoName
                     ,
-                    description: repoConfig.repositoryAttributes.description + " --Created by repo-template"
+                    description: repoConfig.repositoryAttributes.description + globalConfig.repoDescriptionSuffix
                     ,
                     homepage: repoConfig.repositoryAttributes.homepage
                     ,
@@ -590,6 +591,13 @@ function configBranches(job)
                                     logger.endlog("Repository creation complete: " + job.repository.name,job,"Success");
                                     logger.syslog("Repository creation complete: " + job.repository.name);
 
+                                }).then(function (err,req){
+                                    job.github.issues.create({
+                                         "owner":job.repository.owner.login
+                                        ,"repo":job.repository.name
+                                        ,"title":"Repository " + (job.source === 'repocreated' ? "modified " : "created ") + "by repo-template."
+                                        ,"body":"Review the [log](" + globalConfig.statusCallbackURL + "?jobID=" + job.jobID + "&format=html)"
+                                    })
                                 })
                             }}).catch(function(err)
                         {
@@ -601,40 +609,6 @@ function configBranches(job)
             });
 
 };
-
-//From filesystem for now, ultimately from configured repository
-/*function loadRepoConfigs()
-{
-
-    var fileNames = fs.readdirSync('./config/repo_templates');
-    var configs = [];
-    var config;
-    logger.syslog("Loading configs", "Config");
-
-    delete globalConfig["repoConfigs"];
-    globalConfig.repoConfigs = [];
-
-    for(var i = 0; i < fileNames.length; i++)
-    {
-        //Is it a JSON file? Or at least, does it have the extension JSON?
-        if(fileNames[i].split('.').pop() === 'json')
-        {
-            try {
-                config = JSON.parse(fs.readFileSync('./config/repo_templates/' + fileNames[i]));
-                globalConfig.repoConfigs.push(JSON.parse(fs.readFileSync('./config/repo_templates/' + fileNames[i])));
-                logger.syslog("Config " + fileNames[i] + " loaded","Config");
-            }
-            catch (e) {
-                logger.syslog("Error parsing config: " + fileNames[i] + " :" + e.message, "Error");
-            }
-        }
-        else
-        {
-            logger.syslog("Skipping non JSON file " + fileNames[i], "Starting");
-        }
-    }
-    logger.syslog(globalConfig.repoConfigs.length + " repository configurations loaded.");
-}*/
 
 function loadRepoConfigs()
 {
@@ -679,38 +653,37 @@ function loadRepoConfigs()
         });
     };
 
+function loadConfig()
+{
 
+    if(globalConfig.repoConfigs)
+    {
+        var origRepoConfigs = JSON.parse(JSON.stringify(globalConfig.repoConfigs));
+    }
+    globalConfig = {};
 
-    /*
+    globalConfig = JSON.parse(fs.readFileSync('./config/config.json'));
+    globalConfig.repoConfigs = origRepoConfigs;
+    adminGitHub = new GitHubClient({
+        debug: globalConfig.githubAPIDebug
+        ,pathPrefix: globalConfig.TemplateSourceHost !== "github.com" ? "/api/v3" : ""
+        ,host: globalConfig.TemplateSourceHost === 'github.com' ? 'api.github.com' : globalConfig.TemplateSourceHost
+        ,protocol: "https"
+        ,headers: {"user-agent":"repo-template"}
+    });
 
-    //get the directory
-    adminGitHub.repos.getContent({
-                        "owner":globalConfig.TemplateSourceRepo.split('/')[0]
-                        ,"repo":globalConfig.TemplateSourceRepo.split('/').pop()
-                        ,"path":globalConfig.TemplateSourcePath
-                        ,"ref":globalConfig.TemplateSourceBranch
-                    }).then(function(err,res){
-                for(var i = 0; i < err.length; i++)
-                {
-                    adminGitHub.repos.getContent({
-                        "owner":globalConfig.TemplateSourceRepo.split('/')[0]
-                        ,"repo":globalConfig.TemplateSourceRepo.split('/').pop()
-                        ,"path":err[i].path
-                        ,"ref":globalConfig.TemplateSourceBranch
-                    }).then(function(err,res){
-                        var b64 = require('js-base64/base64.js').Base64;
+    var adminAuth = {
+        type: globalConfig.authType
+        , token: globalConfig.adminGitHubPAT
+        , username: globalConfig.adminUsername
+    };
+//authenticate using configured credentials
+    adminGitHub.authenticate(adminAuth);
 
+    //GitHub Enterprise uses /api/v3 as a prefix to REST calls, while GitHub.com does not.
+    globalConfig.pathPrefix = (globalConfig.targetHost !== "github.com") ? "/api/v3" : "";
 
+//If we're going to GitHub, prepend the host with 'api', otherwise leave it be
+    globalConfig.targetHost = (globalConfig.targetHost === "github.com") ? "api.github.com" : globalConfig.targetHost;
 
-
-                    })
-
-
-                }
-
-
-    })
-
-    //Get config files from repository
-
-*/
+}
