@@ -153,7 +153,7 @@ based on configuration information in the Pull Request.  To configure Pull Reque
  ,"orgName":"bidnessforb"
  ,"username":"bryancross"}`
  
- <<image>>
+ ![PR](https://github.com/bryancross/repo-template/blob/testing/doc/pr_example.png "PR Example")
  
  
 5. When the PR is merged, the webhook will send the configuration parameters to the /pullrequest endpoint
