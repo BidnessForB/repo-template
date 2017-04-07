@@ -84,7 +84,6 @@ function dispatchRequest(request, response)
 
 dispatcher.onPost('/repocreated', function(req,res)
 {
-    console.log("foo");
     logger.syslog("Repository creation event received","Running");
     res.writeHead(202, {'Content-Type': 'text/plain'});
     res.end("");
@@ -157,6 +156,7 @@ dispatcher.onPost('/repocreated', function(req,res)
 
     var job = new Job(jobConfig);
     job.repoConfig = repoConfig;
+    job.source = "repocreated";
     jobs.push(job);
     logger.syslog("Processing repository creation event request: " + job.config.params.configName + " jobID: " + job.jobID,"Processing");
 
@@ -170,21 +170,7 @@ dispatcher.onPost('/repocreated', function(req,res)
     git remote add origin https://github.com/BidnessForB/foo.git
     git push -u origin master
     */
-
-    exec("base64 -i " + path + ".pdf" + " -o " + path + ".pdf.64", function (error, stdout, stderr) {
-        if (error !== null) {
-            logger.log('Error writing out base64: ' + error, job);
-            logger.log('stdout: ' + stdout, job);
-            logger.log('stderr: ' + stderr, job);
-        }
-        else {
-            //Now the encoded file is itself encoded in UTF-8, which we'll send up to GitHub
-
-
-
-
-
-            job.github.repos.get({
+    job.github.repos.get({
         "owner":repoJSON.repository.owner.login
         ,"repo":repoJSON.repository.name
     }).then(function(err,res){
@@ -261,48 +247,63 @@ dispatcher.onPost('/pullrequest', function(req,res)
         return;
     }
 
+    var repoConfig = arrayUtil.getArrayElementByKey(globalConfig.repoConfigs,params.configName,'configName');
+
+    if(repoConfig == null)
+    {
+        logger.syslog("No config found for name: " + params.configName,"Failed");
+        return;
+    }
+
+
 
     var jobConfig = JSON.parse(JSON.stringify(globalConfig));
     delete jobConfig.params;
     jobConfig.params = params;
     var job = new Job(jobConfig);
+    job.repoConfig = repoConfig;
+    job.source="pullrequest";
     jobs.push(job);
     logger.syslog("Processing request: " + job.config.params.configName + " jobID: " + job.jobID,"Processing");
-    createRepo(job);
+    job.github.issues.createComment({
+         "owner":PR.repository.owner.login
+        ,"repo":PR.repository.name
+        ,"number":PR.number
+        ,"body":"Your repo-template jobID: " + job.jobID + ". Check [here](http://https://976986a5.ngrok.io/status?jobID=" + job.jobID + " for status info."
+    }).then(function (req,res){
+        job.PRCommentID = req.id;
+        createRepo(job);
+    });
+
 });
 
-dispatcher.onPost('/status', function(req,res)
+dispatcher.onGet('/status', function(req,res)
 {
 
-    var statusJSON;
+    logger.syslog("Status request received","Status");
 
-    if(!req.body)
+    var URL = require('url');
+    var jobID;
+
+
+    if(!URL.parse(req.url).query)
     {
-        statusJSON = {"serverState":suspended ? "suspended" : "active"}
-        logger.syslog("Received request when suspended","Suspended");
+        var statusJSON = {"serverState":suspended ? "suspended" : "active"}
+        logger.syslog("Received status request","Status");
         res.writeHead(200, {'Content-Type': 'text/plain'});
         res.end(JSON.stringify(statusJSON));
         return;
     }
-    logger.syslog("Status request received","Status");
+
     try
     {
-        if(!JSON.parse(req.body).jobID)
-        {
-            logger.syslog("Invalid status request: no jobID parameter","Error");
-            res.writeHead(400, {'Content-Type': 'text/plain'});
-            res.end("Invalid status request: no jobID parameter","Error");
-        }
+        jobID = URL.parse(req.url).query.split('=')[1]
     }
     catch(e)
     {
-        logger.syslog("Problem parsing JSON content for status request","Status",e);
-        res.writeHead(400, {'Content-Type': 'text/plain'});
-        res.end("Problem parsing JSON content for status request: " + e.message);
+        logger.syslog('Error parsing parameters from url: ' + req.url,"Status");
         return;
     }
-
-    var jobID = JSON.parse(req.body).jobID;
 
     ///Search the array of jobs in memory
     //var id = arrayUtil.findValueInArray(jobs, jobID, "jobID");
@@ -398,7 +399,8 @@ dispatcher.onPost('/createRepo', function (req, res)
         res.end(JSON.stringify("Server is suspended.  Make a call to /resume"));
         return;
     }
-    var job = new Job(globalConfig);
+    //var job = new Job(globalConfig);
+    var job = new Job();
     res.writeHead(202, {'Content-Type': 'application/json'});
     res.end(JSON.stringify("{JobID: " + job.jobID));
 
@@ -419,7 +421,8 @@ dispatcher.onPost('/createRepo', function (req, res)
         return;
     }
 
-   if(arrayUtil.findValueInArray(globalConfig.repoConfigs,params.configName,"configName") === null)
+    var repoConfig = arrayUtil.getArrayElementByKey(globalConfig.repoConfigs,params.configName,"configName");
+    if(repoConfig == null)
     {
         logger.syslog("Requested configuration not found: " + job.config.params.configName, "Error");
         res.writeHead(400, {'Content-Type': 'text/plain'});
@@ -427,9 +430,12 @@ dispatcher.onPost('/createRepo', function (req, res)
         return;
     }
 
-
+    var jobConfig = JSON.parse(JSON.stringify(globalConfig));
     delete jobConfig.params;
     jobConfig.params = params;
+    job.config(jobConfig);
+    job.repoConfig = repoConfig;
+    job.source="request";
     jobs.push(job);
     logger.syslog("Processing request: " + job.config.params.configName + " jobID: " + job.jobID,"Processing");
     createRepo(job);
@@ -443,7 +449,7 @@ function createRepo(job)
                 {
                     name: job.config.params.newRepoName
                     ,
-                    description: repoConfig.repositoryAttributes.description + "\r\nCreated by repo-template"
+                    description: repoConfig.repositoryAttributes.description + " --Created by repo-template"
                     ,
                     homepage: repoConfig.repositoryAttributes.homepage
                     ,
@@ -562,8 +568,8 @@ function configBranches(job)
                             }
                         ).then(function(err,res) {
 
-                            var index = arrayUtil.findValueInArray(repoConfig.branches,err.ref.split('/').pop(),"name");
-                            var branch = repoConfig.branches[index];
+                            var index = arrayUtil.findValueInArray(job.repoConfig.branches,err.ref.split('/').pop(),"name");
+                            var branch = job.repoConfig.branches[index];
 
                             if (branch.protection) {
                                 var params = {
@@ -587,6 +593,7 @@ function configBranches(job)
                                 })
                             }}).catch(function(err)
                         {
+                            //"message":"Branch not found" when master doesn't exit
                             logger.endlog("Error creating repository: " + err.message,job,"Failed");
                         })
                     }
