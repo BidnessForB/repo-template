@@ -153,15 +153,13 @@ based on configuration information in the Pull Request.  To configure Pull Reque
  ,"orgName":"bidnessforb"
  ,"username":"bryancross"}`
  
- ![PR](https://github.com/bryancross/repo-template/blob/testing/doc/pr_example.png "PR Example")
+ ![PR](https://github.com/bryancross/repo-template/blob/master/doc/pr_example.png "PR Example")
  
  
 5. When the PR is merged, the webhook will send the configuration parameters to the /pullrequest endpoint
 
 Once the repository is created, repo-template will create an issue with a link to the log file for the 
 creation process
-
-<<image>>
 
 ## Responding to repository creation events
 
@@ -176,9 +174,6 @@ To enable repo-template to respond to repository creation events:
 Once the repository is created, repo-template will create an issue with a link to the log file for the 
 modification process.
 
-<<image>>
-
-      
 ## Application Configuration
 
 There are two application level configurations:
