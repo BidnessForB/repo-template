@@ -1,5 +1,6 @@
 # Logs
 log/
+repo_requests
 test/test-cases.md
 .gitignore
 config/repo_templates/*foo*
