@@ -324,5 +324,3 @@ For more information, see the [API Docs](https://developer.github.com/v3/repos/b
  - The server system log is written to `./log/repo-template.log`
  - Log info for each repository creation job is written to the `./log` directory
  with the jobID as the filename.
- 
- 
