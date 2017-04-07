@@ -18,9 +18,9 @@ configuration files.
     
 Repo-template can work in several different ways:
     
-    1. As a command line tool allowing you to create repositories
-    2. By parsing specially formatted Pull Requests, creating repositories when the PRs are merged
-    3. In response to the Repository Create event, modifying new repositories.
+1. As a command line tool allowing you to create repositories
+2. By parsing specially formatted Pull Requests, creating repositories when the PRs are merged
+3. In response to the Repository Create event, modifying new repositories.
     
 In all cases, you can configure repo-template to:
     
