@@ -13,7 +13,7 @@
     ,"has_wiki":true
     ,"auto_init":false
     ,"gitignore_template":""
-    ,"license_template":"mit"
+    ,"license_template":""
     ,"allow_rebase_merge":true
     ,"has_downloads":true
     ,"allow_squash_merge":true
