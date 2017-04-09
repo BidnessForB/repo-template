@@ -5,7 +5,7 @@ configuration files.
 
 ### Getting Started
 
-1. Clone the repository
+1. Clone the repository.
 2. Run `./script/bootstrap.sh`
 3. Edit `./script/.env` and `./config/config.json` and add your properly scoped GitHub PAT.  
 4. Run ./script/repo_template.sh to start the server  
