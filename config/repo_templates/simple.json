@@ -5,15 +5,15 @@
   ,"repositoryAttributes":
   {
      "name":"simple"
-    ,"description":"Default description"
+    ,"description":"Simple description"
     ,"homepage":"https://github.com"
     ,"private":false
     ,"has_issues":true
     ,"has_projects":true
     ,"has_wiki":true
-    ,"auto_init":true
+    ,"auto_init":false
     ,"gitignore_template":""
-    ,"license_template":"mit"
+    ,"license_template":""
     ,"allow_rebase_merge":true
     ,"has_downloads":true
     ,"allow_squash_merge":true
