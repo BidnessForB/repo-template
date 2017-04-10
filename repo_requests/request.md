@@ -1,1 +1,7 @@
-### I WOULD LIKE A REPO NOW PLZ thank you
+{
+  "targetHost":"github.com"
+ ,"newRepoName":"AutoRepo"
+ ,"configName":"simple"
+ ,"orgName":"bidnessforb"
+ ,"username":"bryancross"
+ }
