@@ -6,7 +6,7 @@
 "use strict";
 var logger = require('./lib/logger.js');
 var arrayUtil = require('./lib/arrayUtil.js');
-var exec = require('child_process').exec;
+var execSync = require('child_process').execSync;
 var GitHubClient = require("github"); //https://github.com/mikedeboer/node-github
 var adminGitHub  = require("github"); //https://github.com/mikedeboer/node-github
 var globalConfig = require("./config/config.json");
@@ -50,65 +50,62 @@ function dispatchRequest(request, response)
     }
 }
 
-dispatcher.onPost('/repocreated', function(req,res)
-{
-    logger.syslog("Repository creation event received","Running");
+dispatcher.onPost('/repocreated', function(req,res) {
+    logger.syslog("Repository event received", "repocreate");
     res.writeHead(202, {'Content-Type': 'application/json'});
-    res.end(JSON.stringify({"msg":"Repository creationevent received"}));
+    res.end(JSON.stringify({"msg": "Repository creation received"}));
+    if(suspended)
+    {
+        logger.syslog("Skipping repository event: server suspended","repocreate");
+        return;
+    }
 
     var repoJSON;
-    try
+    try 
     {
         repoJSON = JSON.parse(req.body);
     }
-    catch(e)
-    {
-        logger.syslog("Exception parsing repository create JSON","Repo Create Event",e);
+    catch (e) {
+        logger.syslog("Exception parsing repository create JSON", "repocreate", e);
         return;
     }
 
-    if(repoJSON.action != 'created')
-    {
-        logger.syslog("Ignoring repository creation event action: " + repoJSON.action, "Repo Create Event");
+    if (repoJSON.action != 'created') {
+        logger.syslog("Ignoring repository event action: " + repoJSON.action, "repocreate");
         return;
     }
 
-    if(repoJSON.repository.description && repoJSON.repository.description.search(globalConfig.repoDescriptionSuffix))
-    {
-        logger.syslog("Ignoring repository created by repo-template","Repo Create Event");
+    if (repoJSON.repository.description && repoJSON.repository.description.search(globalConfig.repoDescriptionSuffix)) {
+        logger.syslog("Ignoring repository created by repo-template", "repocreate");
         return;
     }
-
 
     var URL = require('url');
-    if(!URL.parse(req.url).query)
-    {
-        logger.syslog('No parameters found for repository creation event','Repo Create Event');
+    if (!URL.parse(req.url).query) {
+        logger.syslog('No parameters found for repository creation event', 'repocreate');
         return;
     }
 
     var configName;
 
-    try
-    {
+    try {
         configName = URL.parse(req.url).query.split('=')[1]
     }
-    catch(e)
-    {
-        logger.syslog('Error parsing parameters from url: ' + req.url, "Repo Create Event Failed",e);
+    catch (e) {
+        logger.syslog('Error parsing parameters from url: ' + req.url, "repocreate", e);
         return;
     }
 
-    var repoConfig = arrayUtil.getArrayElementByKey(globalConfig.repoConfigs,configName,'configName');
+    var repoConfig = arrayUtil.getArrayElementByKey(globalConfig.repoConfigs, configName, 'configName');
 
-    if(repoConfig === null)
-    {
-        logger.syslog('Could not find repository configuration with name: ' + configName,"Repo Create Event Failed");
+    if (repoConfig === null) {
+        logger.syslog('Could not find repository configuration with name: ' + configName, "repocreate");
         return;
     }
 
     var jobConfig = JSON.parse(JSON.stringify(globalConfig));
-    jobConfig.params.username=globalConfig.adminUsername;
+    jobConfig.params = [];
+    jobConfig.params.username = globalConfig.adminUsername;
     jobConfig.params.targetHost = URL.parse(repoJSON.repository.html_url).hostname;
     jobConfig.params.configName = configName;
     jobConfig.params.userPAT = globalConfig.adminGitHubPAT;
@@ -118,14 +115,65 @@ dispatcher.onPost('/repocreated', function(req,res)
     job.repoConfig = repoConfig;
     job.source = "repocreated";
     jobs.push(job);
-    logger.syslog("Processing repository creation event request: " + job.config.params.configName + " jobID: " + job.jobID,"Repo Creation Event");
+    logger.syslog("Processing repository creation event request: " + job.config.params.configName + " jobID: " + job.jobID, "Repo Creation Event");
     job.github.repos.get({
-        "owner":repoJSON.repository.owner.login
-        ,"repo":repoJSON.repository.name
-    }).then(function(err,res){
+        "owner": repoJSON.repository.owner.login
+        , "repo": repoJSON.repository.name
+    }).then(function (err, res) {
         job.repository = JSON.parse(JSON.stringify(err));
-        configureTeams(job);
+        job.github.gitdata.getReferences({
+            "owner": repoJSON.repository.owner.login
+            , "repo": repoJSON.repository.name
+        }).then(function (err, res) {
+            configureTeams(job);
+        }).catch(function (err) {
+                    var msgJSON = JSON.parse(err.message);
+                    if (err.code != 409 && msgJSON.message != "Git Repository is empty.")//conflict, empty repository )
+                    {
+                        logger.log("Modification of created repository " + job.repository.name + "failed. ", job, "repocreated", err);
+                        return;
+                    }
+                    else {
+                        try
+                        {
+                            execSync("./script/create-empty-commit.sh " + job.repository.html_url + " ./job/" + job.jobID + " '" + job.config.commitMsg + "'");
+                        }
+                        catch(e)
+                        {
+                            logger.log('Error creating empty commit: ' + e.message, job, "Failed",e);
+                            return;
+                        }
+                        configureTeams(job);
+                        /*
+                        execSync("./script/create-empty-commit.sh " + job.repository.html_url + " ./job/" + job.jobID + " '" + job.config.commitMsg + "'", function (error, stdout, stderr) {
+                            if (error !== null) {
+                                var jsErr = {"message": error};
+                                logger.log('Error creating empty commit: ' + error, job, "repocreated", jsErr);
+                                logger.log('Error creating empty commit: stdout: ' + stdout, job, "repocreated");
+                                logger.log('Error creating empty commit: stderr: ' + stderr, job, "repocreated");
+                                return;
+                            }
+                            else {
+                                logger.log('Repository empty commit created', job, 'repocreated');
+                                configureTeams(job);
+                            }
+
+                        });*/
+                    }
+                })
     });
+    job.github.issues.create({
+        "owner": repoJSON.repository.owner.login
+        ,
+        "repo": repoJSON.repository.name
+        ,
+        "title": "Your repository was created by repo-template"
+        ,
+        "body": "Your repo-template jobID: " + job.jobID + ".\r\n Check [here](" + globalConfig.statusCallbackURL + "?jobID=" + job.jobID + "&format=html) for status info."
+    }).catch(function(err){
+        console.log(err);
+    });
+
 });
 
 dispatcher.onGet('/suspend', function(req,res)
@@ -422,36 +470,7 @@ dispatcher.onPost('/createRepo', function (req, res)
     jobs.push(job);
     logger.syslog("Processing request: " + job.config.params.configName + " jobID: " + job.jobID,"Processing");
     createRepo(job);
-    /*
-    if(params.templateRepo)
-    {
-        copyRepo(job);
-        configureTeams(job);
-    }
-    else
-    {
-        createRepo(job);
-    }
-    */
-
-
 });
-
-function copyRepo(job)
-{
-    exec("../script/repocopy.sh " + source_repo_url + " " + target_repo_url, function (error, stdout, stderr) {
-        if (error !== null) {
-            console.log('Error writing out base64: ' + error, job);
-            console.log('stdout: ' + stdout, job);
-            console.log('stderr: ' + stderr, job);
-        }
-        else
-        {
-
-        }
-
-     });
-};
 
 function createRepo(job)
 {
@@ -487,7 +506,7 @@ function createRepo(job)
                     ,
                     allow_merge_commit: repoConfig.repositoryAttributes.allow_merge_commit
 
-                }
+                };
     /*
                 if(!job.config.params.orgName) {
         job.github.repos.create(options)
@@ -509,10 +528,25 @@ function createRepo(job)
             .then(function (err, res) {
                 logger.log("Repository created. ID: " + err.id,job,"Success");
                 job.repository = JSON.parse(JSON.stringify(err));
+                if(job.config.params.templateRepo)
+                {
+                    copyRepo(job);
+                }
             }).then(function (err,res)
             {
                 configureTeams(job, repoConfig);
-            }).catch(function (err) {
+            }).then(function (err,req) {
+            logger.log("Creating issue in new repository", job, "configBranches");
+            job.github.issues.create({
+                "owner": job.repository.owner.login
+                ,
+                "repo": job.repository.name
+                ,
+                "title": "Repository " + (job.source === 'repocreated' ? "modified " : "created ") + "by repo-template."
+                ,
+                "body": "Review the [log](" + globalConfig.statusCallbackURL + "?jobID=" + job.jobID + "&format=html)"
+            })
+        }).catch(function (err) {
                 logger.endlog("Error creating repository: " + err.message, job, "Failed", err);
                 return;
             });
@@ -533,7 +567,7 @@ function configureTeams(job) {
                             id: team.id
                             , org: job.config.params.orgName
                             , repo: job.repository.name
-                            , permission: team.permission
+                            , permission: job.repoConfig.teams[i].permission
                         })
                     }
 
@@ -565,11 +599,9 @@ function configBranches(job)
         {
             job.commitSHA = err.commit.sha;
             logger.log("Master branch found.  HEAD commit SHA: " + job.commitSHA,job,"configBranches");
-                for(var i = 0; i < job.repoConfig.branches.length; i++)
-                {
-                    //skip master.  Later find out what the default branch is and skip it
-                    if(job.repoConfig.branches[i].name != 'master') {
-                        logger.log("Creating branch " + job.repoConfig.branches[i].name, job,"configBranches");
+                for(var i = 0; i < job.repoConfig.branches.length; i++) {
+                    if (job.repoConfig.branches[i].name != 'master') {
+                        logger.log("Creating branch " + job.repoConfig.branches[i].name, job, "configBranches");
                         job.github.gitdata.createReference(
                             {
                                 owner: job.repository.owner.login
@@ -580,8 +612,19 @@ function configBranches(job)
                                 ,
                                 sha: job.commitSHA
                             }
-                        ).then(function(err,res) {
-
+                        ).then(function (err, res) {
+                            configBranchProtection(job, err.ref.split('/').pop());
+                        }).catch(function(err)
+                        {
+                            //"message":"Branch not found" when master doesn't exist
+                            logger.endlog("Error " + job.source === "repocreated" ? "modifying" : "creating" + " repository: " + err.message,job,"Failed");
+                        })
+                    }
+                    else {
+                        configBranchProtection(job, job.repoConfig.branches[i].name);
+                    }
+                }
+/*
                             //var index = arrayUtil.findValueInArray(job.repoConfig.branches,err.ref.split('/').pop(),"name");
                             var branch = arrayUtil.getArrayElementByKey(job.repoConfig.branches, err.ref.split('/').pop(),"name");
                             //var branch = job.repoConfig.branches[index];
@@ -603,27 +646,77 @@ function configBranches(job)
                                 }
                                 logger.log("Updating branch protection for branch: " + branch.name,job,"configBranches");
                                 job.github.repos.updateBranchProtection(params).then(function(err,res){
-                                    logger.endlog("Repository creation complete: " + job.repository.name,job,"Success");
-                                    logger.syslog("Repository creation complete: " + job.repository.name);
-
-                                }).then(function (err,req){
-                                    logger.log("Creating issue in new repository",job,"configBranches");
-                                    job.github.issues.create({
-                                         "owner":job.repository.owner.login
-                                        ,"repo":job.repository.name
-                                        ,"title":"Repository " + (job.source === 'repocreated' ? "modified " : "created ") + "by repo-template."
-                                        ,"body":"Review the [log](" + globalConfig.statusCallbackURL + "?jobID=" + job.jobID + "&format=html)"
-                                    })
+                                    logger.syslog("Repository " + job.source === 'repocreated' ? "modification" : "creation" + " complete: " + job.repository.name,'configBranches');
+                                    logger.endlog("Repository " + job.source === 'repocreated' ? "modification" : "creation" + " complete: " + job.repository.name,job,"Success");
                                 })
                             }}).catch(function(err)
                         {
                             //"message":"Branch not found" when master doesn't exist
-                            logger.endlog("Error creating repository: " + err.message,job,"Failed");
+                            logger.endlog("Error " + job.source === "repocreated" ? "modifying" : "creating" + " repository: " + err.message,job,"Failed");
                         })
-                    }
+                    //}
                 }
+*/
             });
 };
+
+function configBranchProtection(job, branch)
+{
+    //var index = arrayUtil.findValueInArray(job.repoConfig.branches,err.ref.split('/').pop(),"name");
+    var branchConfig = arrayUtil.getArrayElementByKey(job.repoConfig.branches, branch,"name");
+    //var branch = job.repoConfig.branches[index];
+
+    if (branchConfig.protection) {
+        var params = {
+            "owner": job.repository.owner.login
+            , "repo": job.repository.name
+            , "branch": branchConfig.name
+        }
+        if (branchConfig.protection.required_status_checks) {
+            params.required_status_checks = JSON.parse(JSON.stringify(branchConfig.protection.required_status_checks));
+        }
+        if (branchConfig.protection.required_pull_request_reviews) {
+            params.required_pull_request_reviews = JSON.parse(JSON.stringify(branchConfig.protection.required_pull_request_reviews));
+        }
+        if (branchConfig.protection.restrictions) {
+            params.restrictions = JSON.parse(JSON.stringify(branchConfig.protection.restrictions));
+        }
+        logger.log("Updating branch protection for branch: " + branchConfig.name,job,"configBranches");
+        job.github.repos.updateBranchProtection(params).then(function(err,res){
+            logger.log("Branch protection applied for " + branchConfig.name);
+            branchConfig.status="complete";
+            updateStatus(job);
+        }).catch(function(err){
+            logger.log("Error applying branch protection for " + branchConfig.name,job,'configBranchProtection',err);
+            branchConfig.status="error";
+            updateStatus(job);
+        });
+    }
+};
+
+function updateStatus(job)
+{
+    var countDone = 0;
+
+    for(var i=0;i < job.repoConfig.branches.length;i++)
+    {
+        var branchConfig = job.repoConfig.branches[i];
+        if(branchConfig.status)
+        {
+            countDone++;
+        }
+    }
+
+    if(countDone === job.repoConfig.branches.length)
+    {
+        logger.endlog("Repository " + job.repository.name + " " + (job.source === "repocreated" ? "modification" : "creation" )+ " complete.",job,"Success");
+    }
+
+
+
+
+}
+
 
 function loadRepoConfigs() {
     var configs = [];
@@ -634,7 +727,7 @@ function loadRepoConfigs() {
     globalConfig.repoConfigs = [];
     logger.syslog("Loading repository configurations", "loadRepoConfigs");
 
-    if (globalConfig.templateSource === 'repository') {
+    if (globalConfig.TemplateSource === 'repository') {
         var repoDir = adminGitHub.repos.getContent({
             "owner": globalConfig.TemplateSourceRepo.split('/')[0]
             , "repo": globalConfig.TemplateSourceRepo.split('/').pop()
