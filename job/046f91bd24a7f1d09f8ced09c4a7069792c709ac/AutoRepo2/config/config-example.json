@@ -1,0 +1,23 @@
+{
+ "jobID": ""
+,"startTime": ""
+,"msgs": []
+,"GitHubPAT":"<your properly scoped GitHub PAT>"
+,"authType":"oauth"
+,"user":"<valid GitHub username>"
+,"TemplateSourceRepo":"<org/user>/<repository>"
+,"TemplateSourcePath":"<path/within/repo>"
+,"commitMsg":"Auto committed by repo-template"
+,"deleteTempDir":true
+,"userAgent":"repo-template"
+,"listenOnPort":3000
+,"callback": ""
+,"debug":false
+,"jobsLimit":1000
+,"debug":false
+,"errors":[]
+,"status":""
+,"tempDir":""
+,"endTime":""
+,"duration":""
+}
