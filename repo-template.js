@@ -179,7 +179,7 @@ function getBranchesForRepo(job)
         }
     }).catch(function (err)
     {
-        if (err.code != 409 && msgJSON.message != "Git Repository is empty.")//conflict, empty repository )
+        if (err.code != 409 && err.message != "Git Repository is empty.")//conflict, empty repository )
         {
             logger.log("Modification of created repository " + job.repository.name + "failed. ", job, "repocreated", err);
             return;
@@ -216,6 +216,8 @@ function copyRepo(job)
 {
     try
     {
+        //Currently only works with the simple config because it requires an empty repository
+        //Can probably find command-line git fu to overcome this
         execSync("./script/repocopy.sh " + job.config.params.templateRepo + " " + job.repository.html_url + " ./job/" + job.jobID);
         configureTeams(job);
     }
@@ -607,6 +609,13 @@ dispatcher.onPost('/repocreated', function(req,res) {
         logger.syslog('Could not find repository configuration with name: ' + configName, "repocreate");
         return;
     }
+
+    //So wondering if the thing to do here isn't just to delete the created repository
+    //and create a new one with the same name and owner following the specified
+    //repository configuration?  Seems a lot easier than trying to figure out
+    //whether to create a README etc., for an already extant repo.
+    //But then, what would the point be of allowing org members to
+    //create repos in the first place?
 
     var jobConfig = JSON.parse(JSON.stringify(globalConfig));
     jobConfig.params = {};
