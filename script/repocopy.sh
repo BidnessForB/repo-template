@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
-cd ~/dev/test
-source_repo=${1}
-target_repo=${2}
-IFS="/" read -a urlarray <<< "$source_repo"
-repo_name=$(echo ${urlarray[4]} | cut -f1 -d'.')
-git clone ${source_repo}
-cd repo-template
+SOURCE_REPO=${1}
+TARGET_REPO=${2}
+WORKING_DIR=${3}
+cd ${WORKING_DIR}
+IFS="/" read -a urlarray <<< "$SOURCE_REPO"
+REPO_NAME=$(echo ${urlarray[4]} | cut -f1 -d'.')
+git clone ${SOURCE_REPO}
+cd ${REPO_NAME}
 rm -rf .git
+rm -rf *
 git init
+git remote add origin ${TARGET_REPO}
+git pull origin master
 git add -f *
 git commit -m 'Initial commit of copied resources'
-git remote add origin ${target_repo}
-git pull origin master
 git push -u origin master
-rm -rf ${repo_name}
-cd ~/dev/test
-rm -rf ${repo_name}
+cd ..
+rm -rf ${REPO_NAME}

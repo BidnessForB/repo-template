@@ -1,6 +1,7 @@
 # Logs
 log/
 repo_requests
+./script/repocopy.sh
 test/test-cases.md
 .gitignore
 config/repo_templates/*foo*
