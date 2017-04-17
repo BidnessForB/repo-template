@@ -9,7 +9,7 @@ testObj.js
 output/
 .env
 *.log
-job/
+job/**
 # Runtime data
 pids
 *.pid

@@ -1,17 +1,17 @@
 {
   "action": "closed",
-  "number": 7,
+  "number": 39,
   "pull_request": {
-    "url": "https://api.github.com/repos/bryancross/repo-template/pulls/7",
-    "id": 114652316,
-    "html_url": "https://github.com/bryancross/repo-template/pull/7",
-    "diff_url": "https://github.com/bryancross/repo-template/pull/7.diff",
-    "patch_url": "https://github.com/bryancross/repo-template/pull/7.patch",
-    "issue_url": "https://api.github.com/repos/bryancross/repo-template/issues/7",
-    "number": 7,
+    "url": "https://api.github.com/repos/bryancross/repo-template/pulls/39",
+    "id": 116155041,
+    "html_url": "https://github.com/bryancross/repo-template/pull/39",
+    "diff_url": "https://github.com/bryancross/repo-template/pull/39.diff",
+    "patch_url": "https://github.com/bryancross/repo-template/pull/39.patch",
+    "issue_url": "https://api.github.com/repos/bryancross/repo-template/issues/39",
+    "number": 39,
     "state": "closed",
     "locked": false,
-    "title": "testing",
+    "title": "Need a repo",
     "user": {
       "login": "bryancross",
       "id": 6423235,
@@ -31,24 +31,24 @@
       "type": "User",
       "site_admin": true
     },
-    "body": "REPOSITORY_REQUEST\r\n{\r\n  \"targetHost\":\"github.com\"\r\n ,\"newRepoName\":\"AutoRepo\"\r\n ,\"configName\":\"default\"\r\n ,\"orgName\":\"bidnessforb\"\r\n ,\"username\":\"bryancross\"\r\n}",
-    "created_at": "2017-04-06T17:19:58Z",
-    "updated_at": "2017-04-06T17:20:27Z",
-    "closed_at": "2017-04-06T17:20:27Z",
-    "merged_at": "2017-04-06T17:20:27Z",
-    "merge_commit_sha": "e3751a4ab3f2e1c1a2670a4ff84bc63c9058d423",
+    "body": "REPOSITORY_REQUEST\r\n{\r\n  \"targetHost\":\"github.com\"\r\n ,\"newRepoName\":\"AutoRepo3\"\r\n ,\"configName\":\"default\"\r\n ,\"orgName\":\"bidnessforb\"\r\n ,\"username\":\"bryancross\"\r\n}",
+    "created_at": "2017-04-17T16:04:52Z",
+    "updated_at": "2017-04-17T16:05:52Z",
+    "closed_at": "2017-04-17T16:05:52Z",
+    "merged_at": "2017-04-17T16:05:52Z",
+    "merge_commit_sha": "7321d165b8b74c46e5cfc09e712e5e600a5fc1ce",
     "assignee": null,
     "assignees": [],
     "milestone": null,
-    "commits_url": "https://api.github.com/repos/bryancross/repo-template/pulls/7/commits",
-    "review_comments_url": "https://api.github.com/repos/bryancross/repo-template/pulls/7/comments",
+    "commits_url": "https://api.github.com/repos/bryancross/repo-template/pulls/39/commits",
+    "review_comments_url": "https://api.github.com/repos/bryancross/repo-template/pulls/39/comments",
     "review_comment_url": "https://api.github.com/repos/bryancross/repo-template/pulls/comments{/number}",
-    "comments_url": "https://api.github.com/repos/bryancross/repo-template/issues/7/comments",
-    "statuses_url": "https://api.github.com/repos/bryancross/repo-template/statuses/59d14dd312f16c8389d447c6ce7fd1ca01b8b735",
+    "comments_url": "https://api.github.com/repos/bryancross/repo-template/issues/39/comments",
+    "statuses_url": "https://api.github.com/repos/bryancross/repo-template/statuses/10fbecca3e6e8b2f18356c41e2f13884b042d011",
     "head": {
-      "label": "bryancross:testing",
-      "ref": "testing",
-      "sha": "59d14dd312f16c8389d447c6ce7fd1ca01b8b735",
+      "label": "bryancross:bryancross-patch-10",
+      "ref": "bryancross-patch-10",
+      "sha": "10fbecca3e6e8b2f18356c41e2f13884b042d011",
       "user": {
         "login": "bryancross",
         "id": 6423235,
@@ -134,13 +134,13 @@
         "deployments_url": "https://api.github.com/repos/bryancross/repo-template/deployments",
         "created_at": "2017-03-31T17:46:46Z",
         "updated_at": "2017-03-31T19:47:07Z",
-        "pushed_at": "2017-04-06T17:20:27Z",
+        "pushed_at": "2017-04-17T16:05:52Z",
         "git_url": "git://github.com/bryancross/repo-template.git",
         "ssh_url": "git@github.com:bryancross/repo-template.git",
         "clone_url": "https://github.com/bryancross/repo-template.git",
         "svn_url": "https://github.com/bryancross/repo-template",
         "homepage": null,
-        "size": 35,
+        "size": 241,
         "stargazers_count": 0,
         "watchers_count": 0,
         "language": "JavaScript",
@@ -161,7 +161,7 @@
     "base": {
       "label": "bryancross:master",
       "ref": "master",
-      "sha": "2046c515af1e0ba3e7efdec2b6061b424cb0f9fd",
+      "sha": "b56650d121f08909fc95d7b128a9af32c794e362",
       "user": {
         "login": "bryancross",
         "id": 6423235,
@@ -247,13 +247,13 @@
         "deployments_url": "https://api.github.com/repos/bryancross/repo-template/deployments",
         "created_at": "2017-03-31T17:46:46Z",
         "updated_at": "2017-03-31T19:47:07Z",
-        "pushed_at": "2017-04-06T17:20:27Z",
+        "pushed_at": "2017-04-17T16:05:52Z",
         "git_url": "git://github.com/bryancross/repo-template.git",
         "ssh_url": "git@github.com:bryancross/repo-template.git",
         "clone_url": "https://github.com/bryancross/repo-template.git",
         "svn_url": "https://github.com/bryancross/repo-template",
         "homepage": null,
-        "size": 35,
+        "size": 241,
         "stargazers_count": 0,
         "watchers_count": 0,
         "language": "JavaScript",
@@ -273,33 +273,34 @@
     },
     "_links": {
       "self": {
-        "href": "https://api.github.com/repos/bryancross/repo-template/pulls/7"
+        "href": "https://api.github.com/repos/bryancross/repo-template/pulls/39"
       },
       "html": {
-        "href": "https://github.com/bryancross/repo-template/pull/7"
+        "href": "https://github.com/bryancross/repo-template/pull/39"
       },
       "issue": {
-        "href": "https://api.github.com/repos/bryancross/repo-template/issues/7"
+        "href": "https://api.github.com/repos/bryancross/repo-template/issues/39"
       },
       "comments": {
-        "href": "https://api.github.com/repos/bryancross/repo-template/issues/7/comments"
+        "href": "https://api.github.com/repos/bryancross/repo-template/issues/39/comments"
       },
       "review_comments": {
-        "href": "https://api.github.com/repos/bryancross/repo-template/pulls/7/comments"
+        "href": "https://api.github.com/repos/bryancross/repo-template/pulls/39/comments"
       },
       "review_comment": {
         "href": "https://api.github.com/repos/bryancross/repo-template/pulls/comments{/number}"
       },
       "commits": {
-        "href": "https://api.github.com/repos/bryancross/repo-template/pulls/7/commits"
+        "href": "https://api.github.com/repos/bryancross/repo-template/pulls/39/commits"
       },
       "statuses": {
-        "href": "https://api.github.com/repos/bryancross/repo-template/statuses/59d14dd312f16c8389d447c6ce7fd1ca01b8b735"
+        "href": "https://api.github.com/repos/bryancross/repo-template/statuses/10fbecca3e6e8b2f18356c41e2f13884b042d011"
       }
     },
     "requested_reviewers": [],
     "merged": true,
     "mergeable": null,
+    "rebaseable": null,
     "mergeable_state": "unknown",
     "merged_by": {
       "login": "bryancross",
@@ -324,7 +325,7 @@
     "review_comments": 0,
     "maintainer_can_modify": false,
     "commits": 1,
-    "additions": 1,
+    "additions": 0,
     "deletions": 1,
     "changed_files": 1
   },
@@ -394,13 +395,13 @@
     "deployments_url": "https://api.github.com/repos/bryancross/repo-template/deployments",
     "created_at": "2017-03-31T17:46:46Z",
     "updated_at": "2017-03-31T19:47:07Z",
-    "pushed_at": "2017-04-06T17:20:27Z",
+    "pushed_at": "2017-04-17T16:05:52Z",
     "git_url": "git://github.com/bryancross/repo-template.git",
     "ssh_url": "git@github.com:bryancross/repo-template.git",
     "clone_url": "https://github.com/bryancross/repo-template.git",
     "svn_url": "https://github.com/bryancross/repo-template",
     "homepage": null,
-    "size": 35,
+    "size": 241,
     "stargazers_count": 0,
     "watchers_count": 0,
     "language": "JavaScript",

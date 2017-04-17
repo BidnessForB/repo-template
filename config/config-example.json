@@ -1,23 +1,23 @@
 {
- "jobID": ""
-,"startTime": ""
-,"msgs": []
-,"GitHubPAT":"<your properly scoped GitHub PAT>"
+ "adminGitHubPAT":"<your GitHub PAT>"
+,"adminUsername":"bryancross"
 ,"authType":"oauth"
-,"user":"<valid GitHub username>"
-,"TemplateSourceRepo":"<org/user>/<repository>"
-,"TemplateSourcePath":"<path/within/repo>"
-,"commitMsg":"Auto committed by repo-template"
+,"adminUsername":"bryancross"
+,"TemplateSource":"repository"
+,"TemplateSourceHost":"github.com"
+,"TemplateSourceRepo":"bryancross/repo-template"
+,"TemplateSourcePath":"config/repo_templates"
+,"TemplateSourceBranch":"master"
+,"repoDescriptionSuffix":"--Created by repo-template"
+,"commitMsg":"Committed by repo-template"
+,"workingDir":"./job"
 ,"deleteTempDir":true
 ,"userAgent":"repo-template"
 ,"listenOnPort":3000
 ,"callback": ""
-,"debug":false
 ,"jobsLimit":1000
-,"debug":false
-,"errors":[]
-,"status":""
-,"tempDir":""
-,"endTime":""
-,"duration":""
+,"githubAPIDebug":true
+,"statusCallbackURL":""
 }
+
+
