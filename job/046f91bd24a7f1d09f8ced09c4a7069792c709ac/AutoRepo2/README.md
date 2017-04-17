@@ -1,5 +1,7 @@
 _NOTE:_ Repository copied by repo-template from https://github.com/bryancross/repo-template.git
 
+_NOTE:_ Repository copied by repo-template from https://github.com/bryancross/repo-template.git
+
 # repo-template
 
 Utility server which accepts requests to create new repositories based on 
