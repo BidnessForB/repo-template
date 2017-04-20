@@ -167,7 +167,7 @@ function getBranchesForRepo(job)
         var masterBranch = arrayUtil.getArrayElementByKey(repoBranches,"refs/heads/master","ref");
         if(masterBranch)
         {
-            job.commitSHA = masterBranch.sha;
+            job.masterCommitSHA = masterBranch.sha;
         }
         if(job.config.params.templateRepo)
         {
@@ -550,7 +550,7 @@ function createRepoNew(job)
                         ,
                         ref: 'refs/heads/' + job.repoConfig.branches[i].name
                         ,
-                        sha: masterBranch.commitSHA
+                        sha: masterBranch.masterCommitSHA
                     }));
             }
          }
