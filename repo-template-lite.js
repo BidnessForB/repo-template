@@ -10,6 +10,7 @@ var HttpDispatcher = require('httpdispatcher');
 var dispatcher     = new HttpDispatcher();
 var globalConfig = require('./config/config-lite.json');
 var GitHubClient = require("github"); //https://github.com/mikedeboer/node-github
+var HashMap = require('hashmap');
 const PORT = 3000;
 
 //Load repository configs
@@ -40,7 +41,7 @@ function createRepo(job)
     
     var options =
     {
-        name: job.config.params.newRepoName
+        name: job.params.newRepoName
         ,description: job.repoConfig.repositoryAttributes.description + " -- created by repo-template"
         ,homepage: job.repoConfig.repositoryAttributes.homepage
         ,private: job.repoConfig.repositoryAttributes.private
@@ -54,7 +55,7 @@ function createRepo(job)
         ,has_downloads: job.repoConfig.repositoryAttributes.has_downloads
         ,allow_squash_merge: job.repoConfig.repositoryAttributes.allow_squash_merge
         ,allow_merge_commit: job.repoConfig.repositoryAttributes.allow_merge_commit
-        ,org: job.config.params.orgName
+        ,org: job.params.orgName
     };
 
     job.github.repos.createForOrg(options)
@@ -69,20 +70,24 @@ function createRepo(job)
 function getBranchesForRepo(job)
 {
     var masterBranch = null;
+    job.repoBranches = new HashMap();
     job.github.gitdata.getReferences({
-        "owner": job.config.params.orgName
-        , "repo": job.config.params.newRepoName
+        "owner": job.params.orgName
+        , "repo": job.params.newRepoName
     }).then(function(repoBranches)
     {
-        job.repoBranches = repoBranches;
         for(var i = 0;i < repoBranches.length;i++)
         {
-            if(repoBranches[i].ref === "refs/heads/master")
-            {
-                job.masterCommitSHA = repoBranches[i].object.sha;
-            }
-        }
-    configureTeams(job);
+            job.repoBranches.set(repoBranches[i].ref.split('/').pop(), repoBranches[i]);
+        };
+    if(!job.repoConfig.teams)
+    {
+        createBranches(job);
+    }
+    else
+    {
+        configureTeams(job);
+    }
     }).catch(function (err)
     {
         console.log("Error retrieving branches for repo: " + err.message);
@@ -93,37 +98,22 @@ function configureTeams(job)
 {
     var proms = [];
     var team;
-    if(!job.repoConfig.teams)
-    {
-        createBranches(job);
-        return;
-    }
     for (var i = 0; i < job.repoConfig.teams.length; i++)
     {
-        for (var t = 0; t < job.orgTeams.length; t++)
-        {
-            if (job.orgTeams[i].name === job.repoConfig.teams[i].team) {
-                team = job.orgTeams[i];
                 proms.push(
                     job.github.orgs.addTeamRepo({
-                        id: job.orgTeams.id
-                        , org: job.config.params.orgName
+                        id: job.orgTeams.get(job.repoConfig.teams[i].team).id
+                        , org: job.params.orgName
                         , repo: job.repository.name
                         , permission: job.repoConfig.teams[i].permission
                     }));
-            }
-        }
     }
-        if(proms.length === 0) {
-            createBranches(job);
-            return;
-        }
         Promise.all(proms).then(function(result)
         {
             createBranches(job);
         }).catch(function(err)
         {
-            console.log("Error creating branches: " + err.message);
+            console.log("Error configuring teams: " + err.message);
         });
 };
 
@@ -144,7 +134,7 @@ function createBranches(job)
                     owner: job.repository.owner.login
                     ,repo: job.repository.name
                     ,ref: 'refs/heads/' + job.repoConfig.branches[i].name
-                    ,sha: job.masterCommitSHA
+                    ,sha: job.repoBranches.get('master').object.sha
                 }));
         }
     }
@@ -206,40 +196,30 @@ dispatcher.onPost('/createRepo', function (req, res)
 
     //var repoConfig = arrayUtil.getArrayElementByKey(globalConfig.repoConfigs,params.configName,"configName");
 
-    var repoConfig = null;
-
-    for(var i = 0;i<globalConfig.repoConfigs.length;i++)
-    {
-        if(globalConfig.repoConfigs[i].configName === params.configName)
-        {
-            repoConfig = globalConfig.repoConfigs[i];
-            break;
-        }
-    }
-
+    var repoConfig = globalConfig.repoConfigs.get(params.configName);
     if(!repoConfig)
     {
-        console.log("Requested configuration not found: " + job.config.params.configName);
+        console.log("Requested configuration not found: " + job.params.configName);
         return;
     }
 
-    job.config = JSON.parse(JSON.stringify(globalConfig));
-    job.config.params = params;
+    //job.config = JSON.parse(JSON.stringify(globalConfig));
+    job.params = params;
     job.repoConfig = repoConfig;
     job.source="request";
 
     var github = new GitHubClient({
         debug: globalConfig.githubAPIDebug
-        ,pathPrefix: job.config.params.targetHost !== "github.com" ? "/api/v3" : ""
-        ,host: job.config.params.targetHost === 'github.com' ? 'api.github.com' : job.config.params.targetHost
+        ,pathPrefix: job.params.targetHost !== "github.com" ? "/api/v3" : ""
+        ,host: job.params.targetHost === 'github.com' ? 'api.github.com' : job.params.targetHost
         ,protocol: "https"
         ,headers: {"user-agent":"repo-template"}
     });
 
     var auth = {
         type: "oauth"
-        , token: job.config.params.userPAT
-        , username: job.config.params.username
+        , token: job.params.userPAT
+        , username: job.params.username
     };
 //authenticate using configured credentials
     github.authenticate(auth);
@@ -250,17 +230,18 @@ dispatcher.onPost('/createRepo', function (req, res)
 function getTeamsForOrg(job)
 {
     var proms = [];
-    proms.push(job.github.orgs.getTeams({org: job.config.params.orgName}));
+    job.orgTeams = new HashMap();
+    proms.push(job.github.orgs.getTeams({org: job.params.orgName}));
     Promise.all(proms)
-        .then(function(teamArray)
+        .then(function(teams)
         {
-            if(teamArray.length > 0)
+            teams[0].forEach(function(team)
             {
-                job.orgTeams = teamArray[0];
-            }
+                job.orgTeams.set(team.name,team);
+            })
             createRepo(job);
         }).catch(function(err){
-        console.log("No teams found for org: " + job.config.params.orgName);
+        console.log("No teams found for org: " + job.params.orgName);
     });
 };
 
@@ -268,7 +249,7 @@ function loadRepoConfigs() {
     var configs = [];
     var config;
 
-    globalConfig.repoConfigs = [];
+    globalConfig.repoConfigs = new HashMap();
     try
     {
         var files = fs.readdirSync('./config/repo_templates');
@@ -282,9 +263,8 @@ function loadRepoConfigs() {
         {
             try
             {
-                var configData = fs.readFileSync("./config/repo_templates/" + files[i]);
-                configData = JSON.parse(configData);
-                globalConfig.repoConfigs.push(configData);
+                var configData = JSON.parse(fs.readFileSync("./config/repo_templates/" + files[i]));
+                globalConfig.repoConfigs.set(configData.configName, configData);
                 console.log("Loaded repository configuration: " + configData.configName);
             }
             catch(e)
