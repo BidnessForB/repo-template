@@ -1,10 +1,10 @@
 {
    "configName":"default"
   ,"configType":"repository"
-  ,"owningOrganization":"bryancross"
+  ,"owningOrganization":"bidnessforb"
   ,"repositoryAttributes":
   {
-   "name":"Default"
+   "name":"test-repo"
   ,"description":"Default description"
   ,"homepage":"https://github.com"
   ,"private":false
