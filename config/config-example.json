@@ -18,6 +18,7 @@
 ,"jobsLimit":1000
 ,"githubAPIDebug":true
 ,"statusCallbackURL":""
+,"repoRequestBranch":"repoRequests"
 }
 
 
