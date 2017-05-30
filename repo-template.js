@@ -664,6 +664,8 @@ dispatcher.onPost('/everything', function(req,res)
 
 dispatcher.onPost('/pullrequest', function(req,res)
 {
+    //Is this an attempt to merge to the configured watch branch?
+    //Is the payload a properly formatted configuration request?
 
     res.writeHead(202, {'Content-Type': 'text/plain'});
     res.end("");
