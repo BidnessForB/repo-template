@@ -171,12 +171,14 @@ function getBranchesForRepo(job)
         }
         if(job.config.params.templateRepo)
         {
-            copyRepo(job);
+            // copyRepo(job); //Runs async!
+            logger.log("Beginning copy repo",job,"copyRepo");
+            execSync("./script/repocopy.sh " + job.config.params.templateRepo + " " + job.repository.html_url + " ./job/" + job.jobID);
+            logger.log("Finished copy repo",job,"copyRepo");
+            //configureTeams(job);
         }
-        else
-        {
             configureTeams(job);
-        }
+
     }).catch(function (err)
     {
         if (err.code != 409 && err.message != "Git Repository is empty.")//conflict, empty repository )
@@ -218,7 +220,9 @@ function copyRepo(job)
     {
         //Currently only works with the simple config because it requires an empty repository
         //Can probably find command-line git fu to overcome this
+        logger.log("Beginning copy repo",job,"copyRepo");
         execSync("./script/repocopy.sh " + job.config.params.templateRepo + " " + job.repository.html_url + " ./job/" + job.jobID);
+        logger.log("Finished copy repo",job,"copyRepo");
         configureTeams(job);
     }
     catch(err)
@@ -652,6 +656,12 @@ dispatcher.onGet('/resume', function(req,res)
     res.end(JSON.stringify({"msg":"Server resumed"}));
 });
 
+dispatcher.onPost('/everything', function(req,res)
+{
+    var data = JSON.parse(req.body);
+    console.log("foo");
+});
+
 dispatcher.onPost('/pullrequest', function(req,res)
 {
 
@@ -882,7 +892,7 @@ dispatcher.onPost('/createRepo', function (req, res)
     //var job = new Job(globalConfig);
     var job = new Job();
     res.writeHead(202, {'Content-Type': 'application/json'});
-    res.end(JSON.stringify("{JobID: " + job.jobID));
+    res.end(JSON.stringify("{JobID: " + job.jobID + "}"));
 
     try {
         var params = JSON.parse(req.body);
