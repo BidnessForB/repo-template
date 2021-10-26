@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bryancross/repo-template.git"
+    "url": "git+https://github.com/bidnessforb/repo-template.git"
   },
   "keywords": [
     "repository",
@@ -18,9 +18,9 @@
   "author": "bryancross@github.com",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/bryancross/repo-template/issues"
+    "url": "https://github.com/bidnessforb/repo-template/issues"
   },
-  "homepage": "https://github.com/bryancross/repo-template#readme",
+  "homepage": "https://github.com/bidnessforb/repo-template#readme",
   "dependencies": {
     "bluebird": "^3.4.7",
     "cli-spinner": "^0.2.5",
