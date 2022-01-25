@@ -1,5 +1,7 @@
 # repo-template
 
+[![Git](https://app.soluble.cloud/api/v1/public/badges/b8518389-c6b1-4936-b619-292a56f98255.svg?orgId=547292756607)](https://app.soluble.cloud/repos/details/github.com/bidnessforb/repo-template?orgId=547292756607)  
+
 Utility server which accepts requests to create new repositories based on 
 configuration files.  
 
